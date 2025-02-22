@@ -1,0 +1,45 @@
+.MuiCard-root:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.MuiButton-containedPrimary {
+  background-color: #1976d2 !important;
+  transition: background-color 0.3s ease, transform 0.3s ease !important;
+}
+
+.MuiButton-containedPrimary:hover {
+  background-color: #1565c0 !important;
+  transform: scale(1.05);
+}
+
+.MuiButton-containedSecondary {
+  background-color: #f50057 !important;
+  transition: background-color 0.3s ease, transform 0.3s ease !important;
+}
+
+.MuiButton-containedSecondary:hover {
+  background-color: #c51162 !important;
+  transform: scale(1.05);
+}
+
+.MuiIconButton-root:hover {
+  background-color: #e3f2fd !important;
+  transform: scale(1.1);
+}
+
+.MuiSelect-root {
+  border-radius: 8px !important;
+  min-width: 120px !important;
+  background-color: #fff !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1) !important;
+}
+
+.MuiMenu-paper {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important; /* 세미콜론 추가 및 문자열 닫음 */
+}
+
+.MuiMenuItem-root:hover {
+  background-color: #e3f2fd !important;
+}

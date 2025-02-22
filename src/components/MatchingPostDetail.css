@@ -1,0 +1,25 @@
+.MuiCard-root {
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  
+  .MuiCard-root:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transform: scale(1.02);
+  }
+  
+  .MuiButton-containedPrimary {
+    transition: background-color 0.3s ease, transform 0.3s ease;
+  }
+  
+  .MuiButton-containedPrimary:hover {
+    transform: scale(1.05);
+  }
+  
+  .MuiImageList-root {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .MuiImageListItem-root:hover img {
+    opacity: 0.8;
+  }

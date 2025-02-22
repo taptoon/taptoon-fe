@@ -1,0 +1,20 @@
+.MuiListItem-root {
+    transition: background-color 0.3s ease;
+  }
+  
+  .MuiListItem-root:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .MuiButton-containedSecondary {
+    transition: background-color 0.3s ease, transform 0.3s ease;
+  }
+  
+  .MuiButton-containedSecondary:hover {
+    transform: scale(1.05);
+  }
+  
+  .MuiBox-root {
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
