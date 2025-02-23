@@ -63,14 +63,14 @@ function MatchingPostBoard() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastId, setLastId] = useState(null);
-  const [lastViewCount, setLastViewCount] = useState(null);
+  const [lastId, setLastId] = useState(null); // 초기값 null 유지
+  const [lastViewCount, setLastViewCount] = useState(null); // 초기값 null 유지
   const [keyword, setKeyword] = useState('');
   const [autocompleteOptions, setAutocompleteOptions] = useState([]);
   const [artistType, setArtistType] = useState('전체');
   const [workType, setWorkType] = useState('전체');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const observer = useRef(null);
+  const [isLastPage, setIsLastPage] = useState(false);
   const navigate = useNavigate();
 
   const fetchAutocomplete = useMemo(() => 
@@ -98,6 +98,7 @@ function MatchingPostBoard() {
 
   const fetchPosts = useCallback(async (cursorId = null, cursorViewCount = null) => {
     try {
+      console.log(`in fetchPosts, cursorId=${cursorId}, cursorViewCount=${cursorViewCount}`);
       setLoading(true);
       let url = 'http://localhost:8080/matching-posts';
       const params = new URLSearchParams();
@@ -105,23 +106,29 @@ function MatchingPostBoard() {
       if (keyword) params.append('keyword', keyword);
       if (artistType !== '전체') params.append('artistType', artistType === '글작가' ? 'WRITER' : 'ILLUSTRATOR');
       if (workType !== '전체') params.append('workType', workType.toUpperCase());
-      if (cursorId && cursorViewCount) {
+      if (cursorId != null && cursorViewCount != null) {
         params.append('lastId', cursorId);
         params.append('lastViewCount', cursorViewCount);
       }
 
       if (params.toString()) url += `?${params.toString()}`;
+      console.log('Fetching posts with URL:', url); // 디버깅 로그
+
       const response = await fetch(url);
       if (!response.ok) throw new Error('게시글을 불러오지 못했습니다.');
       const result = await response.json();
+      console.log('API Response:', result); // 디버깅 로그
       if (!result.successOrFail) throw new Error(result.message || 'API 호출 실패');
 
-      const newPosts = result.data.content;
-      setPosts(prevPosts => [...prevPosts, ...newPosts]);
-      setLastId(result.data.lastId);
-      setLastViewCount(result.data.lastViewCount);
+      const newPosts = result.data.content; // id가 항상 유효하므로 별도 처리 생략
+      setPosts(prevPosts => [...prevPosts, ...newPosts]); // 기존 데이터에 새 데이터 추가
+      // lastId와 lastViewCount를 API 응답에서 직접 설정
+      setLastId(result.data.lastId); // lastId가 null일 경우 서버에서 유효한 값 제공
+      setLastViewCount(result.data.lastViewCount || 0); // lastViewCount가 null일 경우 0으로 기본 설정
+      setIsLastPage(result.data.isLastPage || false); // isLastPage가 undefined일 경우 false로 기본 설정
       setLoading(false);
     } catch (err) {
+      console.error('Fetch error:', err);
       setError(err.message);
       setLoading(false);
     }
@@ -129,25 +136,15 @@ function MatchingPostBoard() {
 
   useEffect(() => {
     fetchPosts();
-  }, [fetchPosts]);
-
-  const lastPostRef = useCallback((node) => {
-    if (loading) return;
-    if (observer.current) observer.current.disconnect();
-
-    observer.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && lastId && lastViewCount) {
-        fetchPosts(lastId, lastViewCount);
-      }
-    });
-
-    if (node) observer.current.observe(node);
-  }, [loading, lastId, lastViewCount, fetchPosts]);
+  }, [keyword, artistType, workType]);
 
   const handleSearchToggle = () => setIsSearchOpen(!isSearchOpen);
   const handleAutocompleteChange = (event, value) => {
     setKeyword(value || '');
     setPosts([]);
+    setLastId(null);
+    setLastViewCount(null);
+    setIsLastPage(false);
     fetchPosts();
     setIsSearchOpen(false);
   };
@@ -155,12 +152,18 @@ function MatchingPostBoard() {
   const handleArtistSelect = (event) => {
     setArtistType(event.target.value);
     setPosts([]);
+    setLastId(null);
+    setLastViewCount(null);
+    setIsLastPage(false);
     fetchPosts();
   };
 
   const handleWorkSelect = (event) => {
     setWorkType(event.target.value);
     setPosts([]);
+    setLastId(null);
+    setLastViewCount(null);
+    setIsLastPage(false);
     fetchPosts();
   };
 
@@ -168,7 +171,18 @@ function MatchingPostBoard() {
     navigate(`/matching-posts/${id}`);
   };
 
-  if (error) return <div>오류: {error}</div>;
+  const handleLoadMore = () => {
+    console.log(`lastId=${lastId}, lastViewCount=${lastViewCount}, isLastPage=${isLastPage}`);
+    console.log(`lastId && lastViewCount && isLastPage=${lastId && lastViewCount && isLastPage}`);
+    if (isLastPage === false) {
+      console.log('Loading more with:', lastId, lastViewCount); // 디버깅 로그
+      fetchPosts(lastId, lastViewCount);
+    } else {
+      console.log('Cannot load more - lastId:', lastId, 'lastViewCount:', lastViewCount, 'isLastPage:', isLastPage); // 디버깅 로그
+    }
+  };
+
+  if (error) return <div style={{ color: 'red', textAlign: 'center' }}>오류: {error}. 페이지를 새로고침하거나 나중에 다시 시도해주세요.</div>;
 
   return (
     <ThemeProvider theme={theme}>
@@ -244,13 +258,12 @@ function MatchingPostBoard() {
 
         <List>
           {posts.map((post, index) => {
-            const isLastPost = posts.length === index + 1;
             const uniqueKey = `${post.id}-${index}`;
             return (
-              <ListItem key={uniqueKey} ref={isLastPost ? lastPostRef : null} disablePadding onClick={() => handlePostClick(post.id)}>
+              <ListItem key={uniqueKey} disablePadding onClick={() => handlePostClick(post.id)}>
                 <Card sx={{ width: '100%', marginBottom: '20px', boxShadow: 3, borderRadius: 2, transition: 'transform 0.3s, box-shadow 0.3s', cursor: 'pointer' }}>
                   <CardHeader
-                    title={post.title}
+                    title={`${post.title}(id=${post.id})`} 
                     subheader={`${post.artistType}, ${post.workType}`}
                     sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
                   />
@@ -268,6 +281,24 @@ function MatchingPostBoard() {
           })}
         </List>
         {loading && <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>}
+        {/* "더 불러오기" 버튼 추가 */}
+        {!loading && !isLastPage && (
+          <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={handleLoadMore}
+              disabled={loading || isLastPage}
+            >
+              더 불러오기
+            </Button>
+          </Box>
+        )}
+        {isLastPage && posts.length > 0 && (
+          <Typography sx={{ textAlign: 'center', mt: 2, color: 'gray' }}>
+            더 이상 데이터가 없습니다.
+          </Typography>
+        )}
       </div>
     </ThemeProvider>
   );
