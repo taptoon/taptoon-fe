@@ -70,7 +70,7 @@ function MatchingPostBoard() {
   const [autocompleteOptions, setAutocompleteOptions] = useState([]); // 자동 완성 옵션
   const [artistType, setArtistType] = useState('전체'); // 작가 타입 (한국어로 표시, 영어로 API 전송)
   const [workType, setWorkType] = useState('전체'); // 업무 형태 (한국어로 표시, 영어로 API 전송)
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // 검색 입력창 열림/닫힘
+  const [isSearchOpen, setIsSearchOpen] = useState(false); // 검색 입력창 열림 / 닫힘
   const [isLastPage, setIsLastPage] = useState(false);
   const navigate = useNavigate(); // 페이지 이동을 위한 navigate
 
@@ -160,23 +160,31 @@ function MatchingPostBoard() {
     fetchPosts(); // 초기 데이터 로드
   }, [keyword, artistType, workType]); // keyword, artistType, workType 변화에 따라 호출
 
-  // 검색 토글 처리
-  const handleSearchToggle = () => setIsSearchOpen(!isSearchOpen);
 
-  // 자동 완성 입력 처리
-  const handleAutocompleteChange = (event, value) => {
-    setKeyword(value || '');
-    setPosts([]);
-    setLastId(null);
-    setLastViewCount(null);
-    setIsLastPage(false);
-    setIsSearchOpen(false);
+  // 검색 토글 처리 (검색어가 있으면 닫기 제한)
+  const handleSearchToggle = () => {
+    if (inputValue.trim() !== '') {
+      console.log('검색어가 있으므로 검색창을 닫을 수 없습니다.');
+    } else {
+      setIsSearchOpen(!isSearchOpen); // 검색어가 없으면 열기/닫기 토글
+    }
   };
 
   // 자동 완성
   const handleInputChange = (event, newInputValue) => {
     setInputValue(newInputValue); // 입력값 업데이트
     fetchAutocomplete(newInputValue); // 자동 완성 데이터 가져오기
+  };
+
+  // 엔터 키로 검색 처리
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      setKeyword(inputValue || ''); // 엔터 키로 keyword 업데이트
+      setPosts([]); // 게시글 데이터 초기화
+      setLastId(null); // 마지막 ID 초기화
+      setLastViewCount(null); // 마지막 조회수 초기화
+      setIsLastPage(false); // 마지막 페이지 여부 초기화
+    }
   };
 
   // 작가 타입 필터 변경 처리 (한국어로 저장, 영어로 API 전송)
@@ -273,18 +281,8 @@ function MatchingPostBoard() {
                       freeSolo
                       options={autocompleteOptions}
                       inputValue={inputValue} // 입력값으로 관리
-                      onInputChange={handleInputChange}
-                      onChange={handleAutocompleteChange} // 옵션 선택 시 처리 (기존 유지 또는 수정)
-                      onKeyPress={(event) => { // 엔터 키 감지 추가
-                        if (event.key === 'Enter') {
-                          setKeyword(inputValue || ''); // 엔터 키로 Keyword 업데이트
-                          setPosts([]); // 게시글 데이터 초기화
-                          setLastId(null); // 마지막 ID 초기화
-                          setLastViewCount(null); // 마지막 조회수 초기화
-                          setIsLastPage(false); // 마지막 페이지 여부 초기화
-                          setIsSearchOpen(false); // 검색 입력창 닫기
-                        }
-                      }}
+                      onInputChange={handleInputChange} // 입력값 변경 처리
+                      onKeyPress={handleKeyPress} // 엔터 키로 검색 처리
                       renderInput={(params) => (
                           <TextField
                               {...params}
