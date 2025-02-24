@@ -73,6 +73,7 @@ function MatchingPostBoard() {
   const [isSearchOpen, setIsSearchOpen] = useState(false); // 검색 입력창 열림 / 닫힘
   const [isLastPage, setIsLastPage] = useState(false);
   const navigate = useNavigate(); // 페이지 이동을 위한 navigate
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('accessToken')); // 로그인 상태 관리 (LocalStorage 사용, 초기 설정만)
 
   // 자동 완성 데이터를 가져오는 함수 (Debounce로 성능 최적화)
   const fetchAutocomplete = useMemo(() =>
@@ -89,7 +90,7 @@ function MatchingPostBoard() {
               });
               if (!response.ok) throw new Error('자동 완성 데이터를 불러오지 못했습니다.');
               const result = await response.json();
-              if (result.successOrFail) {
+              if (result.success_or_fail) {
                 setAutocompleteOptions(result.data || []);
               }
             } catch (err) {
@@ -139,14 +140,14 @@ function MatchingPostBoard() {
       if (!response.ok) throw new Error('게시글을 불러오지 못했습니다.');
       const result = await response.json();
       console.log('API Response:', result); // 디버깅 로그
-      if (!result.successOrFail) throw new Error(result.message || 'API 호출 실패');
+      if (result.success_of_fail === false) throw new Error(result.message || 'API 호출 실패');
 
       const newPosts = result.data.content; // id가 항상 유효하므로 별도 처리 생략
       setPosts(prevPosts => [...prevPosts, ...newPosts]); // 기존 데이터에 새 데이터 추가
       // lastId와 lastViewCount를 API 응답에서 직접 설정
-      setLastId(result.data.lastId); // lastId가 null일 경우 서버에서 유효한 값 제공
-      setLastViewCount(result.data.lastViewCount || 0); // lastViewCount가 null일 경우 0으로 기본 설정
-      setIsLastPage(result.data.isLastPage || false); // isLastPage가 undefined일 경우 false로 기본 설정
+      setLastId(result.data.last_id); // lastId가 null일 경우 서버에서 유효한 값 제공
+      setLastViewCount(result.data.last_view_count || 0); // lastViewCount가 null일 경우 0으로 기본 설정
+      setIsLastPage(result.data.is_last_page || false); // isLastPage가 undefined일 경우 false로 기본 설정
       setLoading(false);
     } catch (err) {
       console.error('Fetch error:', err);
@@ -160,6 +161,15 @@ function MatchingPostBoard() {
     fetchPosts(); // 초기 데이터 로드
   }, [keyword, artistType, workType]); // keyword, artistType, workType 변화에 따라 호출
 
+
+  // 로그인/프로필 버튼 클릭 핸들러
+  const handleAuthClick = () => {
+    if (isLoggedIn) {
+      navigate('/profile'); // 로그인 상태면 프로필 페이지로 이동
+    } else {
+      navigate('/login'); // 로그인 상태가 아니면 로그인 페이지로 이동
+    }
+  };
 
   // 검색 토글 처리 (검색어가 있으면 닫기 제한)
   const handleSearchToggle = () => {
@@ -263,8 +273,17 @@ function MatchingPostBoard() {
               <Button component={Link} to="/create" variant="contained" color="primary" sx={{mr: 1}}>
                 <EditIcon sx={{mr: 0.5}}/> 포스트 등록
               </Button>
-              <Button component={Link} to="/profile" variant="contained" color="secondary">
-                <PersonIcon sx={{mr: 0.5}}/> 내 프로필
+              {/*<Button component={Link} to="/profile" variant="contained" color="secondary">*/}
+              {/*  <PersonIcon sx={{mr: 0.5}}/> 내 프로필*/}
+              {/*</Button>*/}
+              <Button
+                  variant="contained"
+                  color={isLoggedIn ? 'secondary' : 'primary'}
+                  onClick={handleAuthClick}
+                  sx={{ mr: 1 }}
+              >
+                {isLoggedIn ? <PersonIcon sx={{ mr: 0.5 }} /> : null}
+                {isLoggedIn ? '내 프로필' : '로그인'}
               </Button>
             </Box>
           </Box>
@@ -317,7 +336,7 @@ function MatchingPostBoard() {
                     }}>
                       <CardHeader
                           title={`${post.title}(id=${post.id})`}
-                          subheader={`${post.artistType}, ${post.workType}`}
+                          subheader={`${post.artist_type}, ${post.work_type}`}
                           sx={{backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0'}}
                       />
                       <CardContent>
@@ -325,7 +344,7 @@ function MatchingPostBoard() {
                           {post.description}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          조회수: {post.viewCount} | 작성일: {new Date(post.createdAt).toLocaleString()}
+                          조회수: {post.view_count} | 작성일: {new Date(post.created_at).toLocaleString()}
                         </Typography>
                       </CardContent>
                     </Card>

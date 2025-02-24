@@ -29,7 +29,7 @@ function MatchingPostDetail() {
         const response = await fetch(`http://localhost:8080/matching-posts/${id}`);
         if (!response.ok) throw new Error('게시글 상세 정보를 불러오지 못했습니다.');
         const result = await response.json();
-        if (result.successOrFail) {
+        if (result.success_or_fail) {
           setPost(result.data);
         } else {
           throw new Error(result.message || '데이터 로드 실패');
@@ -60,7 +60,7 @@ function MatchingPostDetail() {
         <Card sx={{ boxShadow: 3, borderRadius: 2, mb: 4 }}>
           <CardHeader
             title={post.title}
-            subheader={`${post.artistType}, ${post.workType}`}
+            subheader={`${post.artist_type}, ${post.work_type}`}
             sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}
           />
           <CardContent sx={{ padding: 3 }}>
@@ -68,7 +68,7 @@ function MatchingPostDetail() {
               {post.description}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
-              조회수: {post.viewCount} | 작성일: {new Date(post.createdAt).toLocaleString()} | 수정일: {new Date(post.updatedAt).toLocaleString()}
+              조회수: {post.view_count} | 작성일: {new Date(post.created_at).toLocaleString()} | 수정일: {new Date(post.updated_at).toLocaleString()}
             </Typography>
             <ImageList sx={{ width: '100%', height: 300, mb: 4 }} cols={3} rowHeight={150}>
               {dummyImages.map((img, index) => (
