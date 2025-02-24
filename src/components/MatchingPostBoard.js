@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, Typography, List, ListItem, IconButton, 
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
+import DashboardIcon from '@mui/icons-material/Dashboard'; // 매칭보드를 상징하는 아이콘 추가
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -140,7 +141,7 @@ function MatchingPostBoard() {
       if (!response.ok) throw new Error('게시글을 불러오지 못했습니다.');
       const result = await response.json();
       console.log('API Response:', result); // 디버깅 로그
-      if (result.success_of_fail === false) throw new Error(result.message || 'API 호출 실패');
+      if (result.success_or_fail === false) throw new Error(result.message || 'API 호출 실패');
 
       const newPosts = result.data.content; // id가 항상 유효하므로 별도 처리 생략
       setPosts(prevPosts => [...prevPosts, ...newPosts]); // 기존 데이터에 새 데이터 추가
@@ -160,7 +161,6 @@ function MatchingPostBoard() {
   useEffect(() => {
     fetchPosts(); // 초기 데이터 로드
   }, [keyword, artistType, workType]); // keyword, artistType, workType 변화에 따라 호출
-
 
   // 로그인/프로필 버튼 클릭 핸들러
   const handleAuthClick = () => {
@@ -244,38 +244,38 @@ function MatchingPostBoard() {
 
   return (
       <ThemeProvider theme={theme}>
-        <div style={{padding: '20px', maxWidth: '1200px', margin: '0 auto'}}>
-          <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2}}>
-            <h2>Matching Posts</h2>
+        <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <DashboardIcon sx={{ color: '#1976d2', fontSize: '30px' }} /> {/* 아이콘 추가 */}
+              <Typography variant="h2" component="h1" sx={{ color: '#1976d2', fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
+                Taptoon 매칭보드
+              </Typography>
+            </Box>
             <Box>
-              <IconButton onClick={handleSearchToggle} sx={{mr: 1, color: '#1976d2'}}>
-                <SearchIcon/>
+              <IconButton onClick={handleSearchToggle} sx={{ mr: 1, color: '#1976d2' }}>
+                <SearchIcon />
               </IconButton>
-              <FormControl sx={{mr: 1, minWidth: 120}}>
+              <FormControl sx={{ mr: 1, minWidth: 120 }}>
                 <InputLabel id="artist-type-label">작가 타입</InputLabel>
-                <Select labelId="artist-type-label" value={artistType} onChange={handleArtistSelect} label="작가 타입"
-                        variant="outlined" size="small">
+                <Select labelId="artist-type-label" value={artistType} onChange={handleArtistSelect} label="작가 타입" variant="outlined" size="small">
                   <MenuItem value="전체">전체</MenuItem>
                   <MenuItem value="글작가">글작가</MenuItem>
                   <MenuItem value="그림작가">그림작가</MenuItem>
                 </Select>
               </FormControl>
-              <FormControl sx={{mr: 1, minWidth: 120}}>
+              <FormControl sx={{ mr: 1, minWidth: 120 }}>
                 <InputLabel id="work-type-label">업무 형태</InputLabel>
-                <Select labelId="work-type-label" value={workType} onChange={handleWorkSelect} label="업무 형태"
-                        variant="outlined" size="small">
+                <Select labelId="work-type-label" value={workType} onChange={handleWorkSelect} label="업무 형태" variant="outlined" size="small">
                   <MenuItem value="전체">전체</MenuItem>
                   <MenuItem value="온라인">온라인</MenuItem>
                   <MenuItem value="오프라인">오프라인</MenuItem>
                   <MenuItem value="하이브리드">하이브리드</MenuItem>
                 </Select>
               </FormControl>
-              <Button component={Link} to="/create" variant="contained" color="primary" sx={{mr: 1}}>
-                <EditIcon sx={{mr: 0.5}}/> 포스트 등록
+              <Button component={Link} to="/create" variant="contained" color="primary" sx={{ mr: 1 }}>
+                <EditIcon sx={{ mr: 0.5 }} /> 포스트 등록
               </Button>
-              {/*<Button component={Link} to="/profile" variant="contained" color="secondary">*/}
-              {/*  <PersonIcon sx={{mr: 0.5}}/> 내 프로필*/}
-              {/*</Button>*/}
               <Button
                   variant="contained"
                   color={isLoggedIn ? 'secondary' : 'primary'}
@@ -291,10 +291,10 @@ function MatchingPostBoard() {
           <AnimatePresence>
             {isSearchOpen && (
                 <motion.div
-                    initial={{opacity: 0, height: 0}}
-                    animate={{opacity: 1, height: 'auto'}}
-                    exit={{opacity: 0, height: 0}}
-                    style={{marginBottom: '20px'}}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    style={{ marginBottom: '20px' }}
                 >
                   <Autocomplete
                       freeSolo
@@ -315,7 +315,7 @@ function MatchingPostBoard() {
                             {option}
                           </MenuItem>
                       )}
-                      sx={{width: '100%'}}
+                      sx={{ width: '100%' }}
                   />
                 </motion.div>
             )}
@@ -337,7 +337,7 @@ function MatchingPostBoard() {
                       <CardHeader
                           title={`${post.title}(id=${post.id})`}
                           subheader={`${post.artist_type}, ${post.work_type}`}
-                          sx={{backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0'}}
+                          sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
                       />
                       <CardContent>
                         <Typography variant="body2" color="text.secondary" paragraph>
@@ -352,10 +352,10 @@ function MatchingPostBoard() {
               );
             })}
           </List>
-          {loading && <div style={{textAlign: 'center', padding: '20px', color: '#1976d2'}}>로딩 중...</div>}
+          {loading && <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>}
           {/* "더 불러오기" 버튼 추가 */}
           {!loading && !isLastPage && (
-              <Box sx={{textAlign: 'center', mt: 2}}>
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
                 <Button
                     variant="contained"
                     color="primary"
@@ -367,7 +367,7 @@ function MatchingPostBoard() {
               </Box>
           )}
           {isLastPage && posts.length > 0 && (
-              <Typography sx={{textAlign: 'center', mt: 2, color: 'gray'}}>
+              <Typography sx={{ textAlign: 'center', mt: 2, color: 'gray' }}>
                 마지막 게시글입니다.
               </Typography>
           )}

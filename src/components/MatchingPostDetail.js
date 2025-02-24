@@ -87,7 +87,7 @@ function MatchingPostDetail() {
               variant="contained"
               color="primary"
               startIcon={<ChatIcon />}
-              onClick={() => navigate(`/chat/${post.matchingPostId}`)}
+              onClick={() => navigate(`/chat/${post.matching_post_id}?receiverId=${post.author_id}`)} // 여기서 전달해야 함
               sx={{ mt: 2, backgroundColor: '#ff6f61', '&:hover': { backgroundColor: '#e65b50' } }}
             >
               채팅으로 이동

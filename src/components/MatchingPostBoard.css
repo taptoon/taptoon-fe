@@ -1,3 +1,6 @@
+/* MatchingPostBoard.css */
+
+/* 기존 스타일 유지 */
 .MuiCard-root:hover {
   transform: scale(1.02);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
@@ -37,9 +40,45 @@
 
 .MuiMenu-paper {
   border-radius: 8px !important;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important; /* 세미콜론 추가 및 문자열 닫음 */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
 }
 
 .MuiMenuItem-root:hover {
   background-color: #e3f2fd !important;
+}
+
+/* 새로운 타이틀 및 아이콘 스타일 */
+.MuiTypography-h2 {
+  font-size: 28px !important;
+  font-weight: bold !important;
+  color: #1976d2 !important;
+  transition: color 0.3s ease !important;
+}
+
+.MuiTypography-h2:hover {
+  color: #1565c0 !important;
+}
+
+.MuiSvgIcon-root.dashboard-icon {
+  transition: transform 0.3s ease, color 0.3s ease !important;
+}
+
+.MuiSvgIcon-root.dashboard-icon:hover {
+  transform: scale(1.1) !important;
+  color: #1565c0 !important;
+}
+
+/* 타이틀과 아이콘을 감싸는 Box에 마우스 호버 효과 */
+.title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.title-container:hover {
+  background-color: #e3f2fd;
+  transform: scale(1.02);
 }
