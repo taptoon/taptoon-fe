@@ -1,4 +1,4 @@
-// SignupPage.js
+// Signup.js
 import React, { useState } from 'react';
 import { Container, TextField, Button, Box, Typography, FormControl, InputLabel, OutlinedInput, InputAdornment, IconButton } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';

@@ -1,4 +1,4 @@
-// LoginPage.js
+// Login.js
 import React, { useState, useEffect } from 'react'; // useEffect 추가
 import { Container, TextField, Button, Box, Typography, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -13,14 +13,12 @@ const NaverIcon = () => (
     </svg>
 );
 
-function LoginPage() {
+function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const [searchParams] = useSearchParams(); // URL 쿼리 파라미터 가져오기
-
-    // const apiUrl = process.env.API_URL || 'http://localhost:8080'; // 기본값 추가
 
     // 일반 로그인 처리 (기존 로직 유지)
     const handleLogin = async (e) => {
@@ -62,42 +60,23 @@ function LoginPage() {
         navigate('/signup'); // 회원가입 페이지로 이동
     };
 
-    // 네이버 OAuth 콜백 처리
+    // 네이버 OAuth 콜백 처리 (쿼리 파라미터로 토큰 받음)
     useEffect(() => {
-        const code = searchParams.get('code'); // 네이버 콜백에서 code 쿼리 파라미터 가져오기
-        const state = searchParams.get('state'); // state 쿼리 파라미터 가져오기 (보안 확인용)
+        const accessToken = searchParams.get('access_token'); // 쿼리 파라미터에서 access_token 가져오기
+        const refreshToken = searchParams.get('refresh_token'); // 쿼리 파라미터에서 refresh_token 가져오기
 
-        if (code && state) {
-            const handleNaverCallback = async () => {
-                try {
-                    const response = await fetch(`http://localhost:8080/auth/naver/callback?code=${code}&state=${state}`, {
-                        method: 'GET', // 백엔드에서 제공하는 방식에 따라 POST로 변경 가능
-                        headers: { 'Content-Type': 'application/json' },
-                    });
+        if (accessToken && refreshToken) {
+            try {
+                const cleanAccessToken = accessToken.replace(/^Bearer\s+/i, ''); // 'Bearer ' 제거
+                const cleanRefreshToken = refreshToken.replace(/^Bearer\s+/i, ''); // 'Bearer ' 제거
 
-                    if (!response.ok) throw new Error('네이버 로그인 콜백 실패');
-                    const result = await response.json();
-
-                    if (result.success_or_fail) { // snake_case로 수정: success_or_fail
-                        console.log(`Naver OAuth data=${result}`);
-                        console.log(`Naver accessToken=${result.data.access_token}, refreshToken=${result.data.refresh_token}`);
-
-                        const accessToken = result.data.access_token.replace(/^Bearer\s+/i, ''); // 'Bearer ' 제거
-                        const refreshToken = result.data.refresh_token.replace(/^Bearer\s+/i, ''); // 'Bearer ' 제거
-
-                        localStorage.setItem('accessToken', accessToken); // 토큰 저장
-                        localStorage.setItem('refreshToken', refreshToken);
-                        navigate('/'); // 메인 페이지로 이동
-                    } else {
-                        throw new Error(result.message || '네이버 로그인 실패');
-                    }
-                } catch (err) {
-                    setError('네이버 로그인에 실패했습니다. 다시 시도해주세요.');
-                    console.error('Naver OAuth error:', err);
-                }
-            };
-
-            handleNaverCallback();
+                localStorage.setItem('accessToken', cleanAccessToken); // 토큰 저장
+                localStorage.setItem('refreshToken', cleanRefreshToken);
+                navigate('/'); // 메인 페이지로 이동
+            } catch (err) {
+                setError('네이버 로그인 토큰 처리 중 오류가 발생했습니다.');
+                console.error('Naver OAuth token error:', err);
+            }
         }
     }, [searchParams, navigate]); // searchParams와 navigate를 의존성에 추가
 
@@ -162,4 +141,4 @@ function LoginPage() {
     );
 }
 
-export default LoginPage;
+export default Login;

@@ -1,0 +1,22 @@
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="200" fill="#f8f9fa"/>
+  
+  <!-- Left side: Artist palette representing illustrators -->
+  <circle cx="150" cy="100" r="40" fill="#ff7eb3"/>
+  <circle cx="130" cy="80" r="15" fill="#7ec1ff"/>
+  <circle cx="170" cy="80" r="15" fill="#ffd93d"/>
+  <circle cx="130" cy="120" r="15" fill="#4cd964"/>
+  <circle cx="170" cy="120" r="15" fill="#ff9500"/>
+  
+  <!-- Right side: Pen and paper representing writers -->
+  <path d="M250 70 L290 70 L290 130 L250 130 Z" fill="#ffffff" stroke="#333333" stroke-width="3"/>
+  <path d="M260 80 L280 80 M260 90 L280 90 M260 100 L275 100" stroke="#666666" stroke-width="2"/>
+  <path d="M270 65 L270 135" fill="none" stroke="#ff5a5f" stroke-width="4"/>
+  
+  <!-- Connecting elements -->
+  <path d="M190 100 L240 100" stroke="#333333" stroke-width="3" stroke-dasharray="5,5"/>
+  
+  <!-- Text -->
+  <text x="200" y="170" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold" fill="#333333">TapToon</text>
+</svg>

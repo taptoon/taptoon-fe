@@ -55,6 +55,7 @@ function ChatRoom() {
         }
 
         // 채팅방 개설. 여기까지는 잘 됨.
+        // 채팅방 개설하는 동시에 WebSocket 연결해야 함
 
         const createResult = await createResponse.json();
         if (createResult.success_or_fail) { // snake_case로 수정: success_or_fail

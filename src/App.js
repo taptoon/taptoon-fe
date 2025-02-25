@@ -4,8 +4,8 @@ import MatchingPostCreate from './components/MatchingPostCreate';
 import MyProfile from './components/MyProfile';
 import MatchingPostDetail from './components/MatchingPostDetail'; // 새로 추가
 import ChatRoom from './components/ChatRoom';
-import LoginPage from './components/LoginPage';
-import SignupPage from './components/SignupPage';
+import Login from './components/Login';
+import SignupPage from './components/Signup';
 import MyChatRoomList from './components/MyChatRoomList';
 import {Typography} from "@mui/material"; // 새로 추가
 
@@ -29,7 +29,7 @@ function App() {
                 <Route path="/profile" element={<MyProfile />} />
                 <Route path="/matching-posts/:id" element={<MatchingPostDetail />} />
                 <Route path="/chat/:matchingPostId" element={<ChatRoom />} />
-                <Route path="/login" element={<LoginPage />} /> {/* 로그인 페이지로 변경 */}
+                <Route path="/login" element={<Login />} /> {/* 로그인 페이지로 변경 */}
                 <Route path="/signup" element={<SignupPage />} /> {/* 회원가입 페이지 유지 */}
                 <Route path="/chat-rooms" element={<MyChatRoomList />} /> {/* 내가 참여하고 있는 채팅방 목록 */}
             </Routes>
