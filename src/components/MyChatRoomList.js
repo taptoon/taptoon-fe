@@ -1,8 +1,17 @@
 // MyChatRoomList.js
-import { useState, useEffect } from 'react';
-import { Box, Typography, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Badge, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘
+import {useEffect, useState} from 'react';
+import {
+    Badge,
+    Box,
+    Button,
+    IconButton,
+    List,
+    ListItem,
+    ListItemSecondaryAction,
+    ListItemText,
+    Typography
+} from '@mui/material';
+import {useNavigate} from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'; // 이동 아이콘
 
 function MyChatRoomList() {

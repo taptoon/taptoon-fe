@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, Typography, Box, Button, ImageList, Imag
 import ChatIcon from '@mui/icons-material/Chat';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import './MatchingPostDetail.css';
-import { jwtDecode } from 'jwt-decode'; // named import로 수정
+import { jwtDecode } from 'jwt-decode';
 
 const theme = createTheme({
   palette: {

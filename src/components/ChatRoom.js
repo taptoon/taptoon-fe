@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'; // useEffect 추가로 API 호출
-import {useParams, useNavigate, useSearchParams} from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react'; // useRef 추가로 WebSocket 연결 유지
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, Typography, TextField, Button, List, ListItem, ListItemText, IconButton } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import './ChatRoom.css';
+import { jwtDecode } from 'jwt-decode'; // JWT 디코딩 라이브러리
 
 const theme = createTheme({
   palette: {
@@ -18,33 +19,50 @@ const theme = createTheme({
 
 function ChatRoom() {
   const { matchingPostId } = useParams(); // URL 파라미터에서 matchingPostId 가져오기
-  const [searchParams] = useSearchParams(); // 쿼리 파라미터에서 author_id 가져오기
+  const [searchParams] = useSearchParams(); // 쿼리 파라미터에서 receiverId 가져오기
   const [messages, setMessages] = useState([]); // 채팅 메시지 상태
   const [message, setMessage] = useState(''); // 입력 메시지 상태
   const [roomId, setRoomId] = useState(null); // 채팅방 ID 상태
   const [loading, setLoading] = useState(true); // 로딩 상태
   const [error, setError] = useState(null); // 에러 상태
   const navigate = useNavigate();
+  const wsRef = useRef(null); // WebSocket 연결을 유지하기 위한 ref
 
-  // 채팅방 개설 및 메시지 로드
+  // 현재 로그인한 유저의 ID 추출 (JWT 토큰에서)
+  const getCurrentUserId = () => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (!accessToken) {
+      return null;
+    }
+    try {
+      const decodedToken = jwtDecode(accessToken);
+      return decodedToken.sub ? parseInt(decodedToken.sub, 10) : null; // JWT의 subject(sub)에서 사용자 ID 추출
+    } catch (error) {
+      console.error('JWT 디코딩 실패:', error);
+      setError('JWT 토큰 디코딩 실패. 로그인 상태를 확인하세요.');
+      return null;
+    }
+  };
+
+  // 채팅방 개설 및 WebSocket 연결
   useEffect(() => {
     const createChatRoom = async () => {
       try {
-        const accessToken = localStorage.getItem('accessToken'); // accessToken 가져오기
+        const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) {
           throw new Error('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
         }
 
         const receiverId = searchParams.get('receiverId');
         if (!receiverId) {
-          throw new Error('Receiver ID가 필요합니다.')
+          throw new Error('Receiver ID가 필요합니다.');
         }
 
         // 채팅방 개설 API 호출
         const createResponse = await fetch('http://localhost:8080/chats/chat-room', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${accessToken}`, // accessToken을 Bearer 토큰으로 헤더에 포함
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ memberIds: [receiverId] }), // receiverId를 요청 본문에 포함
@@ -54,15 +72,48 @@ function ChatRoom() {
           throw new Error('채팅방 개설에 실패했습니다.');
         }
 
-        // 채팅방 개설. 여기까지는 잘 됨.
-        // 채팅방 개설하는 동시에 WebSocket 연결해야 함
-
         const createResult = await createResponse.json();
-        if (createResult.success_or_fail) { // snake_case로 수정: success_or_fail
-          setRoomId(createResult.data.room_id); // 채팅방 ID 설정
+        if (createResult.success_or_fail) {
+          const newRoomId = createResult.data.room_id;
+          setRoomId(newRoomId); // 채팅방 ID 설정
 
-          // 채팅방 개설 후 메시지 리스트 가져오기 (필요 시 별도 API 호출)
-          const messagesResponse = await fetch(`http://localhost:8080/chats/${createResult.data.room_id}/messages`, {
+          // WebSocket 연결 설정 (accessToken을 쿼리 파라미터로 포함)
+          const wsUrl = `ws://localhost:8080/ws/chat/${newRoomId}?token=${encodeURIComponent(accessToken)}`;
+          wsRef.current = new WebSocket(wsUrl);
+
+          wsRef.current.onopen = () => {
+            console.log(`WebSocket 연결 성공 - 방 번호: ${newRoomId}`);
+          };
+
+          wsRef.current.onmessage = (event) => {
+            const messageData = JSON.parse(event.data);
+            console.log('WebSocket 메시지 수신:', messageData);
+            // 메시지 업데이트 (sender_id로 구분)
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                id: messageData.id,
+                room_id: messageData.chat_room_id,
+                sender: messageData.sender_id === getCurrentUserId() ? '나' : '상대방',
+                text: messageData.message,
+                time: new Date().toLocaleString(),
+                unread_count: messageData.unread_count,
+              },
+            ]);
+          };
+
+          wsRef.current.onerror = (error) => {
+            console.error('WebSocket 오류:', error);
+            setError('WebSocket 연결에 실패했습니다. 서버 상태를 확인하세요.');
+          };
+
+          wsRef.current.onclose = (event) => {
+            console.log('WebSocket 연결 종료 - 코드:', event.code, '이유:', event.reason);
+            setError('WebSocket 연결이 종료되었습니다. 다시 시도해주세요.');
+          };
+
+          // 채팅방 개설 후 메시지 리스트 가져오기
+          const messagesResponse = await fetch(`http://localhost:8080/chats/${newRoomId}/messages`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -76,7 +127,14 @@ function ChatRoom() {
 
           const messagesResult = await messagesResponse.json();
           if (messagesResult.success_or_fail) {
-            setMessages(messagesResult.data || []); // 메시지 리스트 설정 (API 응답 형식에 따라 조정)
+            setMessages(messagesResult.data.map(msg => ({
+              id: msg.id,
+              room_id: msg.chat_room_id,
+              sender: msg.sender_id === getCurrentUserId() ? '나' : '상대방',
+              text: msg.message,
+              time: new Date(msg.created_at).toLocaleString(), // API에서 제공되는 시간 형식에 따라 조정
+              unread_count: msg.unread_count,
+            })) || []);
           } else {
             throw new Error(messagesResult.message || '메시지 로드 실패');
           }
@@ -94,9 +152,16 @@ function ChatRoom() {
     };
 
     createChatRoom();
+
+    // 컴포넌트 언마운트 시 WebSocket 연결 종료
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
   }, [matchingPostId, navigate]); // matchingPostId와 navigate를 의존성에 추가
 
-  // 메시지 보내기
+  // 메시지 보내기 (API로 전송, WebSocket으로 실시간 반영)
   const handleSendMessage = async () => {
     if (!roomId) {
       setError('채팅방이 개설되지 않았습니다. 다시 시도해주세요.');
@@ -110,6 +175,7 @@ function ChatRoom() {
           throw new Error('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
         }
 
+        // API를 통해 메시지 전송
         const response = await fetch(`http://localhost:8080/chats/${roomId}/message`, {
           method: 'POST',
           headers: {
@@ -124,12 +190,12 @@ function ChatRoom() {
         }
 
         const result = await response.json();
-        if (result.success_or_fail) {
-          setMessages([...messages, { room_id: roomId, sender: '나', text: message, time: new Date().toLocaleString() }]);
-          setMessage('');
-        } else {
+        if (!result.success_or_fail) {
           throw new Error(result.message || '메시지 전송 실패');
         }
+
+        // WebSocket을 통해 실시간 반영은 서버에서 처리하므로, 여기서는 상태를 업데이트하지 않음
+        setMessage('');
       } catch (err) {
         setError(err.message);
         if (err.message.includes('로그인')) {
@@ -150,11 +216,23 @@ function ChatRoom() {
           <Box sx={{ height: '400px', bgcolor: '#f5f5f5', borderRadius: 2, p: 2, mb: 2, overflowY: 'auto' }}>
             <List>
               {messages.map((msg) => (
-                  <ListItem key={msg.id || msg.room_id} sx={{ bgcolor: msg.sender === '나' ? '#e3f2fd' : '#fff', borderRadius: 1, mb: 1 }}>
+                  <ListItem
+                      key={msg.id}
+                      sx={{
+                        bgcolor: msg.sender === '나' ? '#e3f2fd' : '#fff',
+                        borderRadius: 1,
+                        mb: 1,
+                        alignSelf: msg.sender === '나' ? 'flex-end' : 'flex-start', // 오른쪽(자신) 또는 왼쪽(상대방) 정렬
+                        maxWidth: '70%', // 메시지 폭 제한
+                      }}
+                  >
                     <ListItemText
                         primary={`${msg.sender} (${msg.time})`}
                         secondary={msg.text}
-                        sx={{ color: msg.sender === '나' ? '#1976d2' : '#000' }}
+                        sx={{
+                          color: msg.sender === '나' ? '#1976d2' : '#000',
+                          textAlign: msg.sender === '나' ? 'right' : 'left', // 텍스트 정렬
+                        }}
                     />
                   </ListItem>
               ))}
