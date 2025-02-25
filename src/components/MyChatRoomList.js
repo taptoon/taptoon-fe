@@ -1,5 +1,5 @@
 // MyChatRoomList.js
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import {
     Badge,
     Box,
@@ -9,9 +9,9 @@ import {
     ListItem,
     ListItemSecondaryAction,
     ListItemText,
-    Typography
+    Typography,
 } from '@mui/material';
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'; // 이동 아이콘
 
 function MyChatRoomList() {
@@ -60,9 +60,9 @@ function MyChatRoomList() {
         fetchChatRooms();
     }, [navigate]); // navigate를 의존성에 추가
 
-    // 채팅방 클릭 시 상세 페이지로 이동 (필요 시 라우트를 추가로 설정)
+    // 채팅방 클릭 시 ChatRoom.js로 이동 (chatRoomId 전달)
     const handleChatRoomClick = (roomId) => {
-        navigate(`/chat/${roomId}`); // 예: 채팅방 상세 페이지로 이동 (라우트 추가 필요)
+        navigate(`/chat/${roomId}`); // 채팅방 상세 페이지로 이동 (ChatRoom.js로 라우팅)
     };
 
     if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;

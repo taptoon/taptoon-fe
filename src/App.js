@@ -28,7 +28,8 @@ function App() {
                 <Route path="/create" element={<MatchingPostCreate />} />
                 <Route path="/profile" element={<MyProfile />} />
                 <Route path="/matching-posts/:id" element={<MatchingPostDetail />} />
-                <Route path="/chat/:matchingPostId" element={<ChatRoom />} />
+                <Route path="/chat/:chatRoomId" element={<ChatRoom />} />
+                <Route path="/chat" element={<ChatRoom />} /> {/* receiverId로 접근 가능 */}
                 <Route path="/login" element={<Login />} /> {/* 로그인 페이지로 변경 */}
                 <Route path="/signup" element={<SignupPage />} /> {/* 회원가입 페이지 유지 */}
                 <Route path="/chat-rooms" element={<MyChatRoomList />} /> {/* 내가 참여하고 있는 채팅방 목록 */}

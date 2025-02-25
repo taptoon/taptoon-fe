@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, Typography, Box, Button, ImageList, ImageListItem } from '@mui/material';
-import ChatIcon from '@mui/icons-material/Chat';
+import { Card, CardContent, CardHeader, Typography, Box, ImageList, ImageListItem, Fab } from '@mui/material';
+import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import './MatchingPostDetail.css';
 import { jwtDecode } from 'jwt-decode';
@@ -13,6 +13,9 @@ const theme = createTheme({
     },
     secondary: {
       main: '#f50057',
+    },
+    green: {
+      main: '#4CAF50', // 초록색 (채팅 버튼용)
     },
   },
 });
@@ -79,7 +82,7 @@ function MatchingPostDetail() {
       return;
     }
 
-    navigate(`/chat/${post.matching_post_id}?receiverId=${receiverId}`);
+    navigate(`/chat?receiverId=${receiverId}`);
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;
@@ -101,7 +104,7 @@ function MatchingPostDetail() {
 
   return (
       <ThemeProvider theme={theme}>
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
           <Card sx={{ boxShadow: 3, borderRadius: 2, mb: 4 }}>
             <CardHeader
                 title={post.title}
@@ -128,19 +131,27 @@ function MatchingPostDetail() {
                     </ImageListItem>
                 ))}
               </ImageList>
-              {!isCurrentUserAuthor() && ( // 작성자가 아니면 채팅 버튼 표시
-                  <Button
-                      variant="contained"
-                      color="primary"
-                      startIcon={<ChatIcon />}
-                      onClick={handleChatClick}
-                      sx={{ mt: 2, backgroundColor: '#ff6f61', '&:hover': { backgroundColor: '#e65b50' } }}
-                  >
-                    채팅으로 이동
-                  </Button>
-              )}
             </CardContent>
           </Card>
+          {/* 작성자가 아닌 경우에만 오른쪽 하단 플로팅 채팅 버튼 표시 */}
+          {!isCurrentUserAuthor() && (
+              <Fab
+                  color="green" // 초록색 테마
+                  aria-label="chat"
+                  sx={{
+                    position: 'fixed',
+                    bottom: 16,
+                    right: 16,
+                    backgroundColor: '#4CAF50',
+                    '&:hover': {
+                      backgroundColor: '#45a049', // 호버 시 더 진한 초록색
+                    },
+                  }}
+                  onClick={handleChatClick}
+              >
+                <ChatIcon sx={{ color: '#fff' }} /> {/* 흰색 채팅 아이콘 */}
+              </Fab>
+          )}
         </div>
       </ThemeProvider>
   );

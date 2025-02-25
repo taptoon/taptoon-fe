@@ -283,7 +283,7 @@ function MatchingPostBoard() {
                   sx={{ mr: 1 }}
               >
                 {isLoggedIn ? <PersonIcon sx={{ mr: 0.5 }} /> : null}
-                {isLoggedIn ? '내 프로필' : '로그인'}
+                {isLoggedIn ? `내 프로필` : '로그인'}
               </Button>
             </Box>
           </Box>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'; // useRef 추가로 WebSocket 연결 유지
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, IconButton } from '@mui/material';
+import { Box, Typography, TextField, Button, List, ListItem, ListItemText, IconButton, Fab } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘 추가
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import './ChatRoom.css';
 import { jwtDecode } from 'jwt-decode'; // JWT 디코딩 라이브러리
@@ -14,12 +15,16 @@ const theme = createTheme({
     secondary: {
       main: '#ff6f61',
     },
+    green: {
+      main: '#4CAF50', // 초록색 (채팅 버튼용)
+    },
   },
 });
 
 function ChatRoom() {
-  const { matchingPostId } = useParams(); // URL 파라미터에서 matchingPostId 가져오기
-  const [searchParams] = useSearchParams(); // 쿼리 파라미터에서 receiverId 가져오기
+  const { chatRoomId } = useParams(); // URL 파라미터에서 chatRoomId 가져오기 (채팅 목록에서)
+  const [searchParams] = useSearchParams(); // 쿼리 파라미터에서 receiverId 가져오기 (매칭 포스트에서)
+  const receiverId = searchParams.get('receiverId'); // 매칭 포스트에서 receiverId 가져오기
   const [messages, setMessages] = useState([]); // 채팅 메시지 상태
   const [message, setMessage] = useState(''); // 입력 메시지 상태
   const [roomId, setRoomId] = useState(null); // 채팅방 ID 상태
@@ -44,103 +49,107 @@ function ChatRoom() {
     }
   };
 
-  // 채팅방 개설 및 WebSocket 연결
+  // 채팅방 설정 및 WebSocket 연결
   useEffect(() => {
-    const createChatRoom = async () => {
+    const setupChatRoom = async () => {
       try {
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) {
           throw new Error('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
         }
 
-        const receiverId = searchParams.get('receiverId');
-        if (!receiverId) {
-          throw new Error('Receiver ID가 필요합니다.');
-        }
+        let currentRoomId = chatRoomId ? chatRoomId : null;
 
-        // 채팅방 개설 API 호출
-        const createResponse = await fetch('http://localhost:8080/chats/chat-room', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ memberIds: [receiverId] }), // receiverId를 요청 본문에 포함
-        });
-
-        if (!createResponse.ok) {
-          throw new Error('채팅방 개설에 실패했습니다.');
-        }
-
-        const createResult = await createResponse.json();
-        if (createResult.success_or_fail) {
-          const newRoomId = createResult.data.room_id;
-          setRoomId(newRoomId); // 채팅방 ID 설정
-
-          // WebSocket 연결 설정 (accessToken을 쿼리 파라미터로 포함)
-          const wsUrl = `ws://localhost:8080/ws/chat/${newRoomId}?token=${encodeURIComponent(accessToken)}`;
-          wsRef.current = new WebSocket(wsUrl);
-
-          wsRef.current.onopen = () => {
-            console.log(`WebSocket 연결 성공 - 방 번호: ${newRoomId}`);
-          };
-
-          wsRef.current.onmessage = (event) => {
-            const messageData = JSON.parse(event.data);
-            console.log('WebSocket 메시지 수신:', messageData);
-            // 메시지 업데이트 (sender_id로 구분)
-            setMessages((prevMessages) => [
-              ...prevMessages,
-              {
-                id: messageData.id,
-                room_id: messageData.chat_room_id,
-                sender: messageData.sender_id === getCurrentUserId() ? '나' : '상대방',
-                text: messageData.message,
-                time: new Date().toLocaleString(),
-                unread_count: messageData.unread_count,
-              },
-            ]);
-          };
-
-          wsRef.current.onerror = (error) => {
-            console.error('WebSocket 오류:', error);
-            setError('WebSocket 연결에 실패했습니다. 서버 상태를 확인하세요.');
-          };
-
-          wsRef.current.onclose = (event) => {
-            console.log('WebSocket 연결 종료 - 코드:', event.code, '이유:', event.reason);
-            setError('WebSocket 연결이 종료되었습니다. 다시 시도해주세요.');
-          };
-
-          // 채팅방 개설 후 메시지 리스트 가져오기
-          const messagesResponse = await fetch(`http://localhost:8080/chats/${newRoomId}/messages`, {
-            method: 'GET',
+        if (!currentRoomId && receiverId) {
+          // 매칭 포스트에서 receiverId를 사용해 채팅방 개설
+          const createResponse = await fetch('http://localhost:8080/chats/chat-room', {
+            method: 'POST',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
+            body: JSON.stringify({ memberIds: [receiverId] }), // receiverId를 요청 본문에 포함
           });
 
-          if (!messagesResponse.ok) {
-            throw new Error('메시지 리스트를 가져오지 못했습니다.');
+          if (!createResponse.ok) {
+            throw new Error('채팅방 개설에 실패했습니다.');
           }
 
-          const messagesResult = await messagesResponse.json();
-          if (messagesResult.success_or_fail) {
-            setMessages(messagesResult.data.map(msg => ({
-              id: msg.id,
-              room_id: msg.chat_room_id,
-              sender: msg.sender_id === getCurrentUserId() ? '나' : '상대방',
-              text: msg.message,
-              time: new Date(msg.created_at).toLocaleString(), // API에서 제공되는 시간 형식에 따라 조정
-              unread_count: msg.unread_count,
-            })) || []);
+          const createResult = await createResponse.json();
+          if (createResult.success_or_fail) {
+            currentRoomId = createResult.data.room_id;
+            setRoomId(currentRoomId); // 채팅방 ID 설정
           } else {
-            throw new Error(messagesResult.message || '메시지 로드 실패');
+            throw new Error(createResult.message || '채팅방 개설 실패');
           }
+        } else if (!currentRoomId) {
+          throw new Error('채팅방 ID 또는 Receiver ID가 필요합니다.');
         } else {
-          throw new Error(createResult.message || '채팅방 개설 실패');
+          setRoomId(currentRoomId); // 채팅 목록에서 가져온 chatRoomId 사용
         }
+
+        // 채팅방 메시지 리스트 가져오기
+        const messagesResponse = await fetch(`http://localhost:8080/chats/${currentRoomId}/messages`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!messagesResponse.ok) {
+          throw new Error('채팅 메시지 리스트를 가져오지 못했습니다.');
+        }
+
+        const messagesResult = await messagesResponse.json();
+        if (messagesResult.success_or_fail) {
+          setMessages(messagesResult.data.map(msg => ({
+            id: msg.id,
+            room_id: msg.chat_room_id,
+            sender: msg.sender_id === getCurrentUserId() ? '나' : '상대방',
+            text: msg.message,
+            time: new Date(msg.created_at).toLocaleString(), // API에서 제공되는 시간 형식에 따라 조정
+            unread_count: msg.unread_count,
+          })) || []);
+        } else {
+          throw new Error(messagesResult.message || '채팅 메시지 로드 실패');
+        }
+
+        // WebSocket 연결 설정 (accessToken을 쿼리 파라미터로 포함)
+        const wsUrl = `ws://localhost:8080/ws/chat/${currentRoomId}?token=${encodeURIComponent(accessToken)}`;
+        wsRef.current = new WebSocket(wsUrl);
+
+        wsRef.current.onopen = () => {
+          console.log(`WebSocket 연결 성공 - 채팅방 번호: ${currentRoomId}`);
+        };
+
+        wsRef.current.onmessage = (event) => {
+          const messageData = JSON.parse(event.data);
+          console.log('WebSocket 메시지 수신:', messageData);
+          // 메시지 업데이트 (sender_id로 구분)
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              id: messageData.id,
+              room_id: messageData.chat_room_id,
+              sender: messageData.sender_id === getCurrentUserId() ? '나' : '상대방',
+              text: messageData.message,
+              time: new Date().toLocaleString(),
+              unread_count: messageData.unread_count,
+            },
+          ]);
+        };
+
+        wsRef.current.onerror = (error) => {
+          console.error('WebSocket 오류:', error);
+          setError('WebSocket 연결에 실패했습니다. 서버 상태를 확인하세요.');
+        };
+
+        wsRef.current.onclose = (event) => {
+          console.log('WebSocket 연결 종료 - 코드:', event.code, '이유:', event.reason);
+          setError('WebSocket 연결이 종료되었습니다. 다시 시도해주세요.');
+        };
+
       } catch (err) {
         setError(err.message);
         if (err.message.includes('로그인')) {
@@ -151,7 +160,7 @@ function ChatRoom() {
       }
     };
 
-    createChatRoom();
+    setupChatRoom();
 
     // 컴포넌트 언마운트 시 WebSocket 연결 종료
     return () => {
@@ -159,7 +168,7 @@ function ChatRoom() {
         wsRef.current.close();
       }
     };
-  }, [matchingPostId, navigate]); // matchingPostId와 navigate를 의존성에 추가
+  }, [chatRoomId, receiverId, navigate]); // chatRoomId와 receiverId, navigate를 의존성에 추가
 
   // 메시지 보내기 (API로 전송, WebSocket으로 실시간 반영)
   const handleSendMessage = async () => {
@@ -211,8 +220,8 @@ function ChatRoom() {
 
   return (
       <ThemeProvider theme={theme}>
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-          <Typography variant="h4" gutterBottom>채팅방 (게시글 #{matchingPostId}, 방 번호 #{roomId})</Typography>
+        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
+          <Typography variant="h4" gutterBottom>채팅방 (방 번호 #{roomId})</Typography>
           <Box sx={{ height: '400px', bgcolor: '#f5f5f5', borderRadius: 2, p: 2, mb: 2, overflowY: 'auto' }}>
             <List>
               {messages.map((msg) => (
@@ -238,7 +247,7 @@ function ChatRoom() {
               ))}
             </List>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <TextField
                 fullWidth
                 label="메시지 입력"
@@ -258,14 +267,6 @@ function ChatRoom() {
               보내기
             </Button>
           </Box>
-          <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => navigate(-1)}
-              sx={{ mt: 2, bgcolor: '#f50057', '&:hover': { bgcolor: '#c51162' } }}
-          >
-            뒤로가기
-          </Button>
         </div>
       </ThemeProvider>
   );
