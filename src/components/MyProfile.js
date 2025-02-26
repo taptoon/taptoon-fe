@@ -18,7 +18,7 @@ function MyProfile() {
           throw new Error('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
         }
 
-        const response = await fetch('http://localhost:8080/members', {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/members`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`, // accessToken을 Bearer 토큰으로 헤더에 포함
@@ -67,7 +67,7 @@ function MyProfile() {
       const accessToken = localStorage.getItem('accessToken'); // accessToken 가져오기
       if (accessToken) {
         // 백엔드 /auth/logout API 호출 (POST 요청)
-        await fetch('http://localhost:8080/auth/logout', {
+        await fetch(`${process.env.REACT_APP_API_URL}/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`, // accessToken을 헤더에 포함

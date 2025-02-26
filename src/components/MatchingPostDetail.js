@@ -30,7 +30,7 @@ function MatchingPostDetail() {
   useEffect(() => {
     const fetchPostDetail = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/matching-posts/${id}`);
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`);
         if (!response.ok) throw new Error('게시글 상세 정보를 불러오지 못했습니다.');
         const result = await response.json();
         if (result.success_or_fail) {

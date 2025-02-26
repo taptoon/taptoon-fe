@@ -34,7 +34,7 @@ function SignupPage() {
 
         // 백엔드 API 호출
         try {
-            const response = await fetch('http://localhost:8080/auth/sign-up', {
+            const response = await fetch(`http${process.env.REACT_APP_API_URL}/auth/sign-up`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, nickname, name }),

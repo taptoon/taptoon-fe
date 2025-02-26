@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react'; // useRef 추가로 WebSocket 연결 유지
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Box, Typography, TextField, Button, List, ListItem, ListItemText, IconButton, Fab } from '@mui/material';
+import {useEffect, useRef, useState} from 'react'; // useRef 추가로 WebSocket 연결 유지
+import {useNavigate, useParams, useSearchParams} from 'react-router-dom';
+import {Box, Button, List, ListItem, ListItemText, TextField, Typography} from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘 추가
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import {createTheme, ThemeProvider} from '@mui/material/styles';
 import './ChatRoom.css';
-import { jwtDecode } from 'jwt-decode'; // JWT 디코딩 라이브러리
+import {jwtDecode} from 'jwt-decode'; // JWT 디코딩 라이브러리
 
 const theme = createTheme({
   palette: {
@@ -62,7 +61,7 @@ function ChatRoom() {
 
         if (!currentRoomId && receiverId) {
           // 매칭 포스트에서 receiverId를 사용해 채팅방 개설
-          const createResponse = await fetch('http://localhost:8080/chats/chat-room', {
+          const createResponse = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-room`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
@@ -89,7 +88,7 @@ function ChatRoom() {
         }
 
         // 채팅방 메시지 리스트 가져오기
-        const messagesResponse = await fetch(`http://localhost:8080/chats/${currentRoomId}/messages`, {
+        const messagesResponse = await fetch(`${process.env.REACT_APP_API_URL}/chats/${currentRoomId}/messages`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -116,7 +115,7 @@ function ChatRoom() {
         }
 
         // WebSocket 연결 설정 (accessToken을 쿼리 파라미터로 포함)
-        const wsUrl = `ws://localhost:8080/ws/chat/${currentRoomId}?token=${encodeURIComponent(accessToken)}`;
+        const wsUrl = `${process.env.REACT_APP_WS_URL}/ws/chat/${currentRoomId}?token=${encodeURIComponent(accessToken)}`;
         wsRef.current = new WebSocket(wsUrl);
 
         wsRef.current.onopen = () => {
@@ -185,7 +184,7 @@ function ChatRoom() {
         }
 
         // API를 통해 메시지 전송
-        const response = await fetch(`http://localhost:8080/chats/${roomId}/message`, {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/${roomId}/message`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,

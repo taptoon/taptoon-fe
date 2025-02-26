@@ -41,7 +41,7 @@ function MatchingPostCreate() {
       }
 
       try {
-        const response = await axios.post('http://localhost:8080/matching-posts/write', {}, {
+        const response = await axios.post(`${process.env.REACT_APP_API_URL}/matching-posts/write`, {}, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
@@ -51,6 +51,7 @@ function MatchingPostCreate() {
         if (response.data.success_or_fail) {
           setMatchingPostId(response.data.data); // 반환된 ID 저장
         } else {
+          // 여기서 AccessToken refresh 해줘야 하는데 아직 그 로직이 없다. 우선 로그인 창으로 빼야 할까?
           throw new Error(response.data.message || '매칭 포스트 ID 생성 실패');
         }
       } catch (err) {
@@ -91,7 +92,7 @@ function MatchingPostCreate() {
 
         // 1. Presigned URL 및 MatchingPostImage ID 요청
         // directory는 'matchingpost', id는 matchingPostId, fileName은 파일 이름 사용
-        const presignedResponse = await axios.post('http://localhost:8080/images/upload', {
+        const presignedResponse = await axios.post(`${process.env.REACT_APP_API_URL}/images/upload`, {
           directory: 'matchingpost',
           id: matchingPostId,
           file_name: file.name,
@@ -147,7 +148,7 @@ function MatchingPostCreate() {
 
     try {
       // 서버에 이미지 삭제 요청 (S3 및 DB에서 제거)
-      await axios.delete(`http://localhost:8080/matching-posts/images/${imageIdToRemove}`, {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/matching-posts/images/${imageIdToRemove}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
         },
@@ -191,7 +192,7 @@ function MatchingPostCreate() {
       };
 
       // JSON 형식으로 PUT 요청
-      const response = await axios.put(`http://localhost:8080/matching-posts/${matchingPostId}`, requestData, {
+      const response = await axios.put(`${process.env.REACT_APP_API_URL}/matching-posts/${matchingPostId}`, requestData, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json', // JSON 형식으로 변경

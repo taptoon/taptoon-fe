@@ -84,7 +84,7 @@ function MatchingPostBoard() {
               return;
             }
             try {
-              const response = await fetch('http://localhost:8080/matching-posts/autocomplete', {
+              const response = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/autocomplete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ keyword: searchTerm }),
@@ -105,7 +105,7 @@ function MatchingPostBoard() {
     try {
       console.log(`in fetchPosts, cursorId=${cursorId}, cursorViewCount=${cursorViewCount}`);
       setLoading(true);
-      let url = 'http://localhost:8080/matching-posts';
+      let url = `${process.env.REACT_APP_API_URL}/matching-posts`;
       const params = new URLSearchParams();
 
       if (keyword) params.append('keyword', keyword);

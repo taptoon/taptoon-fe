@@ -24,7 +24,7 @@ function Login() {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`http://localhost:8080/auth/login`, {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -47,12 +47,12 @@ function Login() {
 
     // 네이버 OAuth 로그인 시작 (리디렉션)
     const handleNaverLogin = () => {
-        window.location.href = 'http://localhost:8080/auth/naver/login'; // 네이버 OAuth 로그인 URL로 리디렉션
+        window.location.href = `${process.env.REACT_APP_API_URL}/auth/naver/login`; // 네이버 OAuth 로그인 URL로 리디렉션
     };
 
     // Google OAuth 로그인 (기존 로직 유지)
     const handleGoogleLogin = () => {
-        window.location.href = 'http://localhost:8080/auth/google/login'; // Google OAuth 로그인 URL로 리디렉션
+        window.location.href = `${process.env.REACT_APP_API_URL}/auth/google/login`; // Google OAuth 로그인 URL로 리디렉션
     };
 
     // 회원가입 이동 (기존 로직 유지)

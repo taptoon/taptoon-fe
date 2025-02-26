@@ -29,7 +29,7 @@ function MyChatRoomList() {
                     throw new Error('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
                 }
 
-                const response = await fetch('http://localhost:8080/chats/chat-rooms', {
+                const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-rooms`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`, // accessToken을 Bearer 토큰으로 헤더에 포함
