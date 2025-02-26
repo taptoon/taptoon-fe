@@ -245,14 +245,14 @@ function MatchingPostBoard() {
   return (
       <ThemeProvider theme={theme}>
         <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, padding: '12px 16px', backgroundColor: '#fff', borderRadius: 25, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, className: 'title-container' }}>
               <DashboardIcon sx={{ color: '#1976d2', fontSize: '30px' }} /> {/* 아이콘 추가 */}
               <Typography variant="h2" component="h1" sx={{ color: '#1976d2', fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
                 Taptoon 매칭보드
               </Typography>
             </Box>
-            <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <IconButton onClick={handleSearchToggle} sx={{ mr: 1, color: '#1976d2' }}>
                 <SearchIcon />
               </IconButton>

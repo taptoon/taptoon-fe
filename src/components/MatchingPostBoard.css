@@ -68,17 +68,16 @@
   color: #1565c0 !important;
 }
 
-/* 타이틀과 아이콘을 감싸는 Box에 마우스 호버 효과 */
-.title-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px;
-  border-radius: 8px;
-  transition: background-color 0.3s ease, transform 0.3s ease;
+/* 상단 Box 스타일 (테두리 제거 및 그림자/패딩 조정) */
+.header-box {
+  padding: 12px 16px;
+  background-color: #fff;
+  border-radius: 0; /* 라운드 테두리 제거 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* 간단한 그림자 추가 */
+  transition: box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
-.title-container:hover {
-  background-color: #e3f2fd;
-  transform: scale(1.02);
+.header-box:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 호버 시 그림자 강화 */
+  background-color: #f5f5f5; /* 호버 시 배경 밝게 */
 }

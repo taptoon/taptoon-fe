@@ -65,7 +65,7 @@ function MatchingPostDetail() {
   // 채팅 이동 핸들러 (현재 유저 ID와 receiverId 비교 및 로그인 상태 확인)
   const handleChatClick = () => {
     const currentUserId = getCurrentUserId();
-    const receiverId = post.author_id;
+    const receiverId = post?.author_id;
 
     if (!currentUserId) {
       navigate('/login'); // 로그인하지 않은 경우 로그인 페이지로 이동
@@ -89,13 +89,6 @@ function MatchingPostDetail() {
   if (error) return <div>오류: {error}</div>;
   if (!post) return <div>게시글을 찾을 수 없습니다.</div>;
 
-  const dummyImages = [
-    'https://github.com/user-attachments/assets/609850fc-d231-49b4-91ad-fa53c06cfe46',
-    'https://github.com/user-attachments/assets/bf669064-02d5-48a0-965e-e4fb1c05af3a',
-    'https://github.com/user-attachments/assets/79f6244e-8cf3-4a40-afa6-e311e01cf65e',
-    'https://github.com/user-attachments/assets/92f2c109-95ac-4a60-94da-0049b4a2992c'
-  ];
-
   // 현재 유저가 게시글 작성자인지 확인
   const isCurrentUserAuthor = () => {
     const currentUserId = getCurrentUserId();
@@ -107,7 +100,7 @@ function MatchingPostDetail() {
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
           <Card sx={{ boxShadow: 3, borderRadius: 2, mb: 4 }}>
             <CardHeader
-                title={post.title}
+                title={`${post.title} (by authorId:${post.author_id})`}
                 subheader={`${post.artist_type}, ${post.work_type}`}
                 sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}
             />
@@ -118,19 +111,22 @@ function MatchingPostDetail() {
               <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
                 조회수: {post.view_count} | 작성일: {new Date(post.created_at).toLocaleString()} | 수정일: {new Date(post.updated_at).toLocaleString()}
               </Typography>
-              <ImageList sx={{ width: '100%', height: 300, mb: 4 }} cols={3} rowHeight={150}>
-                {dummyImages.map((img, index) => (
-                    <ImageListItem key={index}>
-                      <img
-                          src={img}
-                          alt={`임시 이미지 ${index + 1}`}
-                          loading="lazy"
-                          onError={(e) => { e.target.src = 'https://picsum.photos/300/200?text=Error'; }}
-                          style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-                      />
-                    </ImageListItem>
-                ))}
-              </ImageList>
+              {/* 이미지 데이터가 있을 때만 ImageList 렌더링 */}
+              {post.image_list && post.image_list.length > 0 && (
+                  <ImageList sx={{ width: '100%', height: 300, mb: 4 }} cols={3} rowHeight={150}>
+                    {post.image_list.map((imageUrl, index) => (
+                        <ImageListItem key={index}>
+                          <img
+                              src={imageUrl}
+                              alt={`이미지 ${index + 1}`}
+                              loading="lazy"
+                              onError={(e) => { e.target.src = 'https://picsum.photos/300/200?text=Error'; }}
+                              style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                          />
+                        </ImageListItem>
+                    ))}
+                  </ImageList>
+              )}
             </CardContent>
           </Card>
           {/* 작성자가 아닌 경우에만 오른쪽 하단 플로팅 채팅 버튼 표시 */}
