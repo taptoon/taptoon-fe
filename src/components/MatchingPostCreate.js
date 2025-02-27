@@ -13,9 +13,11 @@ import {
   ImageListItem,
   ImageListItemBar,
   CircularProgress,
+  Stack,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
+import AttachFileIcon from '@mui/icons-material/AttachFile'; // 파일 아이콘
 import axios from 'axios';
 
 function MatchingPostCreate() {
@@ -259,18 +261,26 @@ function MatchingPostCreate() {
             </Select>
           </FormControl>
           <Box sx={{ mt: 2 }}>
-            <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileChange}
-                onClick={handleFileInputClick}
-                style={{ marginBottom: '10px' }}
-            />
+            <Button
+                variant="contained"
+                component="label"
+                startIcon={<AttachFileIcon />}
+                sx={{ mb: 2 }}
+            >
+              이미지 선택
+              <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  onChange={handleFileChange}
+                  onClick={handleFileInputClick}
+              />
+            </Button>
             <Typography variant="body2" color="text.secondary">
-              최대 {MAX_FILES}장까지 업로드 가능 (현재 {files.length}/{MAX_FILES})
+              {files.length === 0 ? '선택된 이미지 없음' : `선택된 이미지: ${files.length}/${MAX_FILES}`}
             </Typography>
-            <ImageList sx={{ width: '100%', height: files.length > 0 ? 150 : 0 }} cols={Math.min(files.length, 5)} rowHeight={100}>
+            <ImageList sx={{ width: '100%', mt: 2 }} cols={Math.min(files.length || 1, 3)} rowHeight={500}>
               {files.map((file, index) => (
                   <ImageListItem key={file.name}>
                     <img
@@ -299,6 +309,11 @@ function MatchingPostCreate() {
                   </ImageListItem>
               ))}
             </ImageList>
+            {files.length > 0 && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                  업로드된 이미지 파일명: {files.map(file => file.name).join(', ')}
+                </Typography>
+            )}
             {uploading && <CircularProgress sx={{ mt: 2 }} />}
             {uploadError && (
                 <Typography variant="body1" color="error.main" sx={{ mt: 2 }}>

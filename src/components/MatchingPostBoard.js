@@ -323,9 +323,9 @@ function MatchingPostBoard() {
 
           <List>
             {posts.map((post, index) => {
-              const uniqueKey = `${post.id}-${index}`;
+              const uniqueKey = `${post.matching_post_id}-${index}`;
               return (
-                  <ListItem key={uniqueKey} disablePadding onClick={() => handlePostClick(post.id)}>
+                  <ListItem key={uniqueKey} disablePadding onClick={() => handlePostClick(post.matching_post_id)}>
                     <Card sx={{
                       width: '100%',
                       marginBottom: '20px',
@@ -335,7 +335,7 @@ function MatchingPostBoard() {
                       cursor: 'pointer'
                     }}>
                       <CardHeader
-                          title={`${post.title}(id=${post.id})`}
+                          title={`${post.title}(id=${post.matching_post_id})`}
                           subheader={`${post.artist_type}, ${post.work_type}`}
                           sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
                       />
