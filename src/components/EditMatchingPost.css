@@ -1,0 +1,43 @@
+.edit-matching-post-container {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.edit-matching-post-container h4 {
+    color: #1976d2;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.edit-matching-post-container .MuiTextField-root,
+.edit-matching-post-container .MuiFormControl-root {
+    margin-bottom: 16px;
+    background-color: #ffffff;
+    border-radius: 4px;
+}
+
+.edit-matching-post-container .MuiButton-root,
+.edit-matching-post-container .MuiFab-root {
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.edit-matching-post-container .MuiFab-root {
+    min-width: 48px;
+    min-height: 48px;
+}
+
+.edit-matching-post-container .MuiImageList-root {
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.edit-matching-post-container .MuiImageListItem-root:hover img {
+    opacity: 0.8;
+}
+
+.edit-matching-post-container .MuiTypography-root {
+    margin-top: 8px;
+}

@@ -120,9 +120,11 @@ function MatchingPostDetail() {
     }
   };
 
-  // 수정 처리 함수 (수정 페이지로 이동)
+  // 수정 처리 함수 (수정 페이지로 이동, 데이터 상태로 전달)
   const handleEdit = () => {
-    navigate(`/edit-matching-post/${id}`); // EditMatchingPost.js로 이동
+    if (post) {
+      navigate(`/edit-matching-post/${id}`, { state: { post } }); // post 데이터를 상태로 전달
+    }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;

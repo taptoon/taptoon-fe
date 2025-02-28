@@ -7,7 +7,8 @@ import ChatRoom from './components/ChatRoom';
 import Login from './components/Login';
 import SignupPage from './components/Signup';
 import MyChatRoomList from './components/MyChatRoomList';
-import {Typography} from "@mui/material"; // 새로 추가
+import {Typography} from "@mui/material";
+import EditMatchingPost from "./components/EditMatchingPost"; // 새로 추가
 
 function App() {
     return (
@@ -33,6 +34,7 @@ function App() {
                 <Route path="/login" element={<Login />} /> {/* 로그인 페이지로 변경 */}
                 <Route path="/signup" element={<SignupPage />} /> {/* 회원가입 페이지 유지 */}
                 <Route path="/chat-rooms" element={<MyChatRoomList />} /> {/* 내가 참여하고 있는 채팅방 목록 */}
+                <Route path="/edit-matching-post/:id" element={<EditMatchingPost />} />
             </Routes>
         </div>
     );
