@@ -145,7 +145,6 @@ function MatchingPostBoard() {
 
       const newPosts = result.data.content; // id가 항상 유효하므로 별도 처리 생략
       setPosts(prevPosts => [...prevPosts, ...newPosts]); // 기존 데이터에 새 데이터 추가
-      // lastId와 lastViewCount를 API 응답에서 직접 설정
       setLastId(result.data.last_id); // lastId가 null일 경우 서버에서 유효한 값 제공
       setLastViewCount(result.data.last_view_count || 0); // lastViewCount가 null일 경우 0으로 기본 설정
       setIsLastPage(result.data.is_last_page || false); // isLastPage가 undefined일 경우 false로 기본 설정
@@ -155,12 +154,12 @@ function MatchingPostBoard() {
       setError(err.message);
       setLoading(false);
     }
-  }, [keyword, artistType, workType]); // 의존성 배열의 값이 바뀌어야 새로운 함수 생성. 그렇기에 값이 변경되지 않은 채로 호출하면 캐싱된 함수 사용됨
+  }, [keyword, artistType, workType]);
 
   // 컴포넌트 마운트 시 초기 데이터 가져오기 (한 번만 호출)
   useEffect(() => {
     fetchPosts(); // 초기 데이터 로드
-  }, [keyword, artistType, workType]); // keyword, artistType, workType 변화에 따라 호출
+  }, [keyword, artistType, workType]);
 
   // 로그인/프로필 버튼 클릭 핸들러
   const handleAuthClick = () => {
@@ -199,11 +198,10 @@ function MatchingPostBoard() {
 
   // 작가 타입 필터 변경 처리 (한국어로 저장, 영어로 API 전송)
   const handleArtistSelect = (event) => {
-    const selectedKorean = event.target.value; // 한국어 값 (예: '글작가', '그림작가', '전체')
-    console.log(`event.target.value=${selectedKorean}`);
-    if (selectedKorean === artistType) return; // 동일한 값이면 호출 생략
+    const selectedKorean = event.target.value;
+    if (selectedKorean === artistType) return;
 
-    setArtistType(selectedKorean); // 상태는 한국어로 저장
+    setArtistType(selectedKorean);
     setPosts([]);
     setLastId(null);
     setLastViewCount(null);
@@ -212,10 +210,10 @@ function MatchingPostBoard() {
 
   // 업무 형태 필터 변경 처리 (한국어로 저장, 영어로 API 전송)
   const handleWorkSelect = (event) => {
-    const selectedKorean = event.target.value; // 한국어 값 (예: '온라인', '오프라인', '하이브리드', '전체')
-    if (selectedKorean === workType) return; // 동일한 값이면 호출 생략
+    const selectedKorean = event.target.value;
+    if (selectedKorean === workType) return;
 
-    setWorkType(selectedKorean); // 상태는 한국어로 저장
+    setWorkType(selectedKorean);
     setPosts([]);
     setLastId(null);
     setLastViewCount(null);
@@ -229,13 +227,11 @@ function MatchingPostBoard() {
 
   // "더 불러오기" 버튼 클릭 핸들러
   const handleLoadMore = () => {
-    console.log(`lastId=${lastId}, lastViewCount=${lastViewCount}, isLastPage=${isLastPage}`);
-    console.log(`lastId && lastViewCount && isLastPage=${lastId && lastViewCount && isLastPage}`);
     if (isLastPage === false) {
-      console.log('Loading more with:', lastId, lastViewCount); // 디버깅 로그
+      console.log('Loading more with:', lastId, lastViewCount);
       fetchPosts(lastId, lastViewCount);
     } else {
-      console.log('Cannot load more - lastId:', lastId, 'lastViewCount:', lastViewCount, 'isLastPage:', isLastPage); // 디버깅 로그
+      console.log('Cannot load more - lastId:', lastId, 'lastViewCount:', lastViewCount, 'isLastPage:', isLastPage);
     }
   };
 
@@ -247,7 +243,7 @@ function MatchingPostBoard() {
         <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, padding: '12px 16px', backgroundColor: '#fff', borderRadius: 25, boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, className: 'title-container' }}>
-              <DashboardIcon sx={{ color: '#1976d2', fontSize: '30px' }} /> {/* 아이콘 추가 */}
+              <DashboardIcon sx={{ color: '#1976d2', fontSize: '30px' }} />
               <Typography variant="h2" component="h1" sx={{ color: '#1976d2', fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
                 Taptoon 매칭보드
               </Typography>
@@ -299,9 +295,9 @@ function MatchingPostBoard() {
                   <Autocomplete
                       freeSolo
                       options={autocompleteOptions}
-                      inputValue={inputValue} // 입력값으로 관리
-                      onInputChange={handleInputChange} // 입력값 변경 처리
-                      onKeyPress={handleKeyPress} // 엔터 키로 검색 처리
+                      inputValue={inputValue}
+                      onInputChange={handleInputChange}
+                      onKeyPress={handleKeyPress}
                       renderInput={(params) => (
                           <TextField
                               {...params}
@@ -338,6 +334,38 @@ function MatchingPostBoard() {
                           title={`${post.title}(id=${post.matching_post_id})`}
                           subheader={`${post.artist_type}, ${post.work_type}`}
                           sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
+                          action={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {post.image_list && post.image_list.length > 0 && (
+                                  <Box sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    position: 'absolute',
+                                    top: 8,
+                                    right: 8,
+                                  }}>
+                                    {post.image_list.map((image, idx) => (
+                                        <Box
+                                            key={idx}
+                                            component="img"
+                                            src={image.original_image_url}
+                                            alt={`이미지 ${idx + 1}`}
+                                            sx={{
+                                              width: 40,
+                                              height: 40,
+                                              borderRadius: '50%', // 원형 이미지
+                                              objectFit: 'cover',
+                                              marginLeft: idx > 0 ? '-16px' : 0, // 1/6 정도 겹침 (40px / 6 ≈ 6.67px, 약 -16px로 설정)
+                                              border: '2px solid #fff', // 겹침 시 경계선 추가
+                                              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                                            }}
+                                            onError={(e) => { e.target.src = 'https://picsum.photos/40/40?text=Error'; }}
+                                        />
+                                    ))}
+                                  </Box>
+                              )}
+                            </Box>
+                          }
                       />
                       <CardContent>
                         <Typography variant="body2" color="text.secondary" paragraph>
