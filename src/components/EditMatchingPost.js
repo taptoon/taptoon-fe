@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     TextField,
-    Button,
     Box,
     Typography,
     Select,
@@ -17,27 +16,19 @@ import {
     Fab,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'; // 이미지 아이콘 (녹색용)
-import EditIcon from '@mui/icons-material/Edit'; // 수정 아이콘
-import CancelIcon from '@mui/icons-material/Cancel'; // 취소 아이콘
-import { ThemeProvider, createTheme } from '@mui/material/styles'; // ThemeProvider 및 createTheme 임포트
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import EditIcon from '@mui/icons-material/Edit';
+import CancelIcon from '@mui/icons-material/Cancel';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import axios from 'axios';
 import './EditMatchingPost.css';
 
 const theme = createTheme({
     palette: {
-        primary: {
-            main: '#1976d2',
-        },
-        secondary: {
-            main: '#f50057',
-        },
-        green: {
-            main: '#4CAF50', // 초록색 (채팅 및 수정 버튼용)
-        },
-        red: {
-            main: '#f44336', // 빨간색 (삭제 버튼용)
-        },
+        primary: { main: '#1976d2' },
+        secondary: { main: '#f50057' },
+        green: { main: '#4CAF50' },
+        red: { main: '#f44336' },
     },
 });
 
@@ -45,38 +36,52 @@ function EditMatchingPost() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const post = location.state?.post; // MatchingPostDetail에서 전달된 데이터
+    const post = location.state?.post ? { ...location.state.post } : null;
 
     const [title, setTitle] = useState(post?.title || '');
     const [description, setDescription] = useState(post?.description || '');
     const [artistType, setArtistType] = useState(post?.artist_type || 'WRITER');
     const [workType, setWorkType] = useState(post?.work_type || 'HYBRID');
-    const [images, setImages] = useState([]); // 업로드된 새 이미지 파일 상태
-    const [existingImages, setExistingImages] = useState(post?.image_list || []); // 기존 이미지 URL 상태
-    const [matchingPostImageIds, setMatchingPostImageIds] = useState([]); // 새로 업로드된 이미지 ID 상태
+    const [images, setImages] = useState([]); // 새로 업로드된 이미지 파일 상태
+    const [existingImages, setExistingImages] = useState(
+        post?.image_list?.map(item => ({
+            id: item.id,
+            matchingPostId: item.matching_post_id,
+            thumbnailImageUrl: item.thumbnail_image_url,
+            originalImageUrl: item.original_image_url,
+        })) || []
+    );
+    const [matchingPostImageIds, setMatchingPostImageIds] = useState([]); // 새로 추가된 이미지 ID 상태
+    const [deletedImageIds, setDeletedImageIds] = useState([]); // 삭제된 이미지 ID 상태
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState(null);
-    const MAX_FILES = 3; // 총 이미지 수 제한 (기존 + 새 이미지)
+    const MAX_FILES = 3;
 
     useEffect(() => {
         if (!post) {
             setUploadError('게시글 데이터를 가져오지 못했습니다.');
+        } else {
+            console.log('Post data in EditMatchingPost:', post);
         }
     }, [post]);
 
-    // 파일 입력 필드 클릭 시 이미지 제한 확인 (기존 + 새 이미지)
+    // 유효한 이미지 수 계산 (삭제된 이미지를 제외)
+    const getValidImageCount = () => {
+        const validExistingImages = existingImages.filter(img => !deletedImageIds.includes(img.id)).length;
+        return validExistingImages + images.length;
+    };
+
     const handleFileInputClick = (event) => {
-        const totalImages = existingImages.length + images.length;
+        const totalImages = getValidImageCount();
         if (totalImages >= MAX_FILES) {
             event.preventDefault();
             alert(`이미지는 최대 ${MAX_FILES}장까지 업로드할 수 있습니다.`);
         }
     };
 
-    // 새 이미지 업로드 핸들러 (Presigned URL 받아서 S3 업로드)
     const handleImageUpload = async (event) => {
         const newFiles = Array.from(event.target.files).filter(file => file.type.startsWith('image/'));
-        const totalImages = existingImages.length + images.length;
+        const totalImages = getValidImageCount();
 
         if (totalImages + newFiles.length > MAX_FILES) {
             alert(`이미지는 최대 ${MAX_FILES}장까지 업로드할 수 있습니다.`);
@@ -89,14 +94,11 @@ function EditMatchingPost() {
         try {
             const uploadPromises = newFiles.map(async (file) => {
                 const presignedResponse = await axios.post(`${process.env.REACT_APP_API_URL}/images/upload`, {
-                    directory: 'matchingpost',
+                    directory: `${process.env.REACT_APP_S3_DIRECTORY}`,
                     id,
                     file_name: file.name,
                 }, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`, 'Content-Type': 'application/json' },
                 });
 
                 if (!presignedResponse.data.success_or_fail) {
@@ -106,11 +108,7 @@ function EditMatchingPost() {
                 const presignedUrl = presignedResponse.data.data.uploading_image_url;
                 const imageEntityId = presignedResponse.data.data.image_entity_id;
 
-                await axios.put(presignedUrl, file, {
-                    headers: {
-                        'Content-Type': file.type || 'application/octet-stream',
-                    },
-                });
+                await axios.put(presignedUrl, file, { headers: { 'Content-Type': file.type || 'application/octet-stream' } });
 
                 setMatchingPostImageIds(prevIds => [...prevIds, imageEntityId]);
                 return file;
@@ -125,19 +123,17 @@ function EditMatchingPost() {
         }
     };
 
-    // 기존 이미지 취소 핸들러 (S3 및 DB에서 삭제)
     const handleExistingImageRemove = async (imageUrl, imageIndex) => {
         setUploading(true);
         setUploadError(null);
 
         try {
-            const imageId = existingImages[imageIndex].id; // image_list에 id가 있다고 가정
+            const imageId = existingImages[imageIndex].id;
             await axios.delete(`${process.env.REACT_APP_API_URL}/matching-posts/images/${imageId}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-                },
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
             });
 
+            setDeletedImageIds(prev => [...prev, imageId]);
             setExistingImages(prev => prev.filter((_, i) => i !== imageIndex));
         } catch (err) {
             setUploadError('기존 이미지 삭제 실패: ' + (err.response?.data?.message || err.message));
@@ -146,13 +142,11 @@ function EditMatchingPost() {
         }
     };
 
-    // 새 이미지 취소 핸들러
     const handleNewImageRemove = (index) => {
         setImages(prev => prev.filter((_, i) => i !== index));
         setMatchingPostImageIds(prevIds => prevIds.filter((_, i) => i !== index));
     };
 
-    // 폼 제출 핸들러 (PUT 요청으로 수정)
     const handleSubmit = async (e) => {
         e.preventDefault();
         const accessToken = localStorage.getItem('accessToken');
@@ -165,40 +159,56 @@ function EditMatchingPost() {
         setUploadError(null);
 
         try {
+            const validImageIds = [
+                ...existingImages.filter(img => !deletedImageIds.includes(img.id)).map(img => img.id),
+                ...matchingPostImageIds,
+            ];
+
             const requestData = {
                 title,
                 description,
                 artist_type: artistType,
                 work_type: workType,
-                matching_post_image_ids: [
-                    ...existingImages.map(img => img.id), // 기존 이미지 ID
-                    ...matchingPostImageIds, // 새로 업로드된 이미지 ID
-                ],
+                valid_image_ids: validImageIds,
+                deleted_image_ids: deletedImageIds,
             };
 
             const response = await axios.put(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`, requestData, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
             });
 
-            if (response.data.success_or_fail) {
-                navigate(`/matching-posts/${id}`); // 수정 후 상세 페이지로 이동
+            // 204 No Content인 경우 본문이 없으므로 json() 호출하지 않음
+            if (response.status === 204) {
+                console.log('수정 성공');
+                alert('매칭 포스트가 성공적으로 수정되었습니다.');
+                navigate(`/matching-posts/${id}`);
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('매칭 포스트 수정 실패');
+            }
+
+            // 다른 상태 코드(예: 200)일 경우 JSON 파싱
+            const result = await response.json();
+            if (result.success_or_fail) {
+                console.log('success');
+                alert('매칭 포스트가 성공적으로 수정되었습니다.');
+                navigate(`/matching-posts/${id}`);
             } else {
-                throw new Error(response.data.message || '매칭 포스트 수정 실패');
+                throw new Error(result.message || '매칭 포스트 수정 실패');
             }
         } catch (err) {
             setUploadError('매칭 포스트 수정 중 오류가 발생했습니다: ' + err.message);
+            console.error('수정 오류:', err);
         } finally {
             setUploading(false);
         }
     };
 
-    // 취소 처리 함수
     const handleCancel = () => {
         if (window.confirm('수정을 취소하시겠습니까?')) {
-            navigate(-1); // 이전 페이지로 돌아감
+            navigate(-1);
         }
     };
 
@@ -278,16 +288,16 @@ function EditMatchingPost() {
                             />
                         </Fab>
                         <Typography variant="body2" color="text.secondary">
-                            {existingImages.length + images.length === 0 ? '선택된 이미지 없음' : `선택된 이미지: ${existingImages.length + images.length}/${MAX_FILES}`}
+                            {getValidImageCount() === 0 ? '선택된 이미지 없음' : `선택된 이미지: ${getValidImageCount()}/${MAX_FILES}`}
                         </Typography>
-                        <ImageList sx={{ width: '100%', mt: 2 }} cols={Math.min((existingImages.length + images.length) || 1, 3)} rowHeight={500}>
-                            {/* 기존 이미지 표시 (취소 가능) */}
-                            {existingImages.map((image, index) => (
+                        <ImageList sx={{ width: '100%', mt: 2 }} cols={Math.min(getValidImageCount() || 1, 3)} rowHeight={500}>
+                            {existingImages.filter(img => !deletedImageIds.includes(img.id)).map((image, index) => (
                                 <ImageListItem key={`existing-${index}`}>
                                     <img
-                                        src={image.image_url}
+                                        src={image.originalImageUrl}
                                         alt={`기존 이미지 ${index + 1}`}
                                         loading="lazy"
+                                        onError={(e) => { e.target.src = 'https://picsum.photos/500/500?text=Image+Not+Found'; }}
                                         style={{ objectFit: 'cover', width: '100%', height: '100%' }}
                                     />
                                     <ImageListItemBar
@@ -300,7 +310,7 @@ function EditMatchingPost() {
                                         actionIcon={
                                             <IconButton
                                                 sx={{ color: 'white' }}
-                                                onClick={() => handleExistingImageRemove(image.image_url, index)}
+                                                onClick={() => handleExistingImageRemove(image.originalImageUrl, index)}
                                                 aria-label={`기존 이미지 삭제 ${index + 1}`}
                                             >
                                                 <CloseIcon />
@@ -309,7 +319,6 @@ function EditMatchingPost() {
                                     />
                                 </ImageListItem>
                             ))}
-                            {/* 새로 추가된 이미지 표시 (취소 가능) */}
                             {images.map((file, index) => (
                                 <ImageListItem key={`new-${index}`}>
                                     <img
@@ -338,17 +347,16 @@ function EditMatchingPost() {
                                 </ImageListItem>
                             ))}
                         </ImageList>
-                        {(existingImages.length > 0 || images.length > 0) && (
+                        {getValidImageCount() > 0 && (
                             <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                                업로드된 이미지 파일명: {[...existingImages.map(img => img.image_url.split('/').pop()), ...images.map(file => file.name)].join(', ')}
+                                업로드된 이미지 파일명: {[
+                                ...existingImages.filter(img => !deletedImageIds.includes(img.id)).map(img => img.originalImageUrl?.split('/').pop() || ''),
+                                ...images.map(file => file.name)
+                            ].join(', ')}
                             </Typography>
                         )}
                         {uploading && <CircularProgress sx={{ mt: 2 }} />}
-                        {uploadError && (
-                            <Typography variant="body1" color="error.main" sx={{ mt: 2 }}>
-                                {uploadError}
-                            </Typography>
-                        )}
+                        {uploadError && <Typography variant="body1" color="error.main" sx={{ mt: 2 }}>{uploadError}</Typography>}
                     </Box>
                     <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                         <Fab

@@ -5,7 +5,7 @@ import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘
 import EditIcon from '@mui/icons-material/Edit'; // 수정 아이콘
 import DeleteIcon from '@mui/icons-material/Delete'; // 삭제 아이콘
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import './MatchingPostDetail.css';
+import './DetailedMatchingPost.css';
 import { jwtDecode } from 'jwt-decode';
 
 const theme = createTheme({
@@ -25,7 +25,7 @@ const theme = createTheme({
   },
 });
 
-function MatchingPostDetail() {
+function DetailedMatchingPost() {
   const { id } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -243,4 +243,4 @@ function MatchingPostDetail() {
   );
 }
 
-export default MatchingPostDetail;
+export default DetailedMatchingPost;

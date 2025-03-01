@@ -2,7 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom';
 import MatchingPostBoard from './components/MatchingPostBoard';
 import CreateMatchingPost from './components/CreateMatchingPost';
 import MyProfile from './components/MyProfile';
-import MatchingPostDetail from './components/MatchingPostDetail'; // 새로 추가
+import DetailedMatchingPost from './components/DetailedMatchingPost'; // 새로 추가
 import ChatRoom from './components/ChatRoom';
 import Login from './components/Login';
 import SignupPage from './components/Signup';
@@ -28,7 +28,7 @@ function App() {
                 <Route path="/" element={<MatchingPostBoard />} />
                 <Route path="/create" element={<CreateMatchingPost />} />
                 <Route path="/profile" element={<MyProfile />} />
-                <Route path="/matching-posts/:id" element={<MatchingPostDetail />} />
+                <Route path="/matching-posts/:id" element={<DetailedMatchingPost />} />
                 <Route path="/chat/:chatRoomId" element={<ChatRoom />} />
                 <Route path="/chat" element={<ChatRoom />} /> {/* receiverId로 접근 가능 */}
                 <Route path="/login" element={<Login />} /> {/* 로그인 페이지로 변경 */}
