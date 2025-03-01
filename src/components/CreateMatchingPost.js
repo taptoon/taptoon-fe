@@ -91,8 +91,9 @@ function CreateMatchingPost() {
 
         // Presigned URL 및 MatchingPostImage ID 요청
         const presignedResponse = await axios.post(`${process.env.REACT_APP_API_URL}/images/upload`, {
-          directory: `${process.env.REACT_APP_S3_DIRECTORY}`,
+          directory: `${process.env.REACT_APP_S3_MATCHING_POST_DIRECTORY}`,
           id: matchingPostId,
+          file_type: `${process.env.REACT_APP_S3_IMAGE_TYPE}`,
           file_name: file.name,
         }, {
           headers: {

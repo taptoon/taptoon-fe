@@ -94,8 +94,9 @@ function EditMatchingPost() {
         try {
             const uploadPromises = newFiles.map(async (file) => {
                 const presignedResponse = await axios.post(`${process.env.REACT_APP_API_URL}/images/upload`, {
-                    directory: `${process.env.REACT_APP_S3_DIRECTORY}`,
-                    id,
+                    directory: `${process.env.REACT_APP_S3_MATCHING_POST_DIRECTORY}`,
+                    id: id,
+                    file_type: `${process.env.REACT_APP_S3_IMAGE_TYPE}`,
                     file_name: file.name,
                 }, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`, 'Content-Type': 'application/json' },
