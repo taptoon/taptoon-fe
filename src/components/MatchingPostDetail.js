@@ -106,16 +106,31 @@ function MatchingPostDetail() {
             'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
           },
         });
-        if (!response.ok) throw new Error('삭제에 실패했습니다.');
+
+        if (!response.ok) {
+          throw new Error('삭제에 실패했습니다.');
+        }
+
+        // 204 No Content인 경우 본문이 없으므로 json() 호출하지 않음
+        if (response.status === 204) {
+          console.log('삭제 성공');
+          alert('게시물이 성공적으로 삭제되었습니다.');
+          navigate(-1); // 이전 페이지로 이동
+          return;
+        }
+
+        // 다른 상태 코드(예: 200)일 경우 JSON 파싱
         const result = await response.json();
-        if (result.success_or_fail) {
-          alert('게시글이 성공적으로 삭제되었습니다.');
-          navigate(-1); // 삭제 후 이전 페이지로 돌아감 (history.back()와 유사)
+        if (result.successOrFail) {
+          console.log('success');
+          alert('게시물이 성공적으로 삭제되었습니다.');
+          navigate(-1);
         } else {
           throw new Error(result.message || '삭제 실패');
         }
       } catch (err) {
         setError(err.message);
+        console.error('삭제 오류:', err);
       }
     }
   };
@@ -153,7 +168,7 @@ function MatchingPostDetail() {
                     {post.image_list.map((imageObject, index) => (
                         <ImageListItem key={index}>
                           <img
-                              src={imageObject.image_url}
+                              src={imageObject.original_image_url}
                               alt={`이미지 ${index + 1}`}
                               loading="lazy"
                               onError={(e) => { e.target.src = 'https://picsum.photos/300/200?text=Error'; }}

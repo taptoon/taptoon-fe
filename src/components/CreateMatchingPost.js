@@ -20,7 +20,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AttachFileIcon from '@mui/icons-material/AttachFile'; // 파일 아이콘
 import axios from 'axios';
 
-function MatchingPostCreate() {
+function CreateMatchingPost() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [artistType, setArtistType] = useState('WRITER');
@@ -111,6 +111,8 @@ function MatchingPostCreate() {
 
         const presignedUrl = presignedResponse.data.data.uploading_image_url;
         const imageEntityId = presignedResponse.data.data.image_entity_id;
+
+        console.log(`presignedUrl=${presignedUrl}, entityId=${imageEntityId}`);
 
         // 2. S3에 파일 업로드 (Presigned URL 사용)
         await axios.put(presignedUrl, file, {
@@ -329,4 +331,4 @@ function MatchingPostCreate() {
   );
 }
 
-export default MatchingPostCreate;
+export default CreateMatchingPost;

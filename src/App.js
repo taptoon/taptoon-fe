@@ -1,6 +1,6 @@
 import { Routes, Route, Link } from 'react-router-dom';
 import MatchingPostBoard from './components/MatchingPostBoard';
-import MatchingPostCreate from './components/MatchingPostCreate';
+import CreateMatchingPost from './components/CreateMatchingPost';
 import MyProfile from './components/MyProfile';
 import MatchingPostDetail from './components/MatchingPostDetail'; // 새로 추가
 import ChatRoom from './components/ChatRoom';
@@ -26,7 +26,7 @@ function App() {
             </Link>
             <Routes>
                 <Route path="/" element={<MatchingPostBoard />} />
-                <Route path="/create" element={<MatchingPostCreate />} />
+                <Route path="/create" element={<CreateMatchingPost />} />
                 <Route path="/profile" element={<MyProfile />} />
                 <Route path="/matching-posts/:id" element={<MatchingPostDetail />} />
                 <Route path="/chat/:chatRoomId" element={<ChatRoom />} />
