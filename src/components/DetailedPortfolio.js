@@ -58,7 +58,7 @@ function DetailedPortfolio() {
     }, [portfolioId, navigate, portfolio]);
 
     const handleEditPortfolio = () => {
-        navigate(`/portfolios/edit/${portfolio?.portfolio_id}`);
+        navigate(`/portfolios/${portfolio?.portfolio_id}/edit`);
     };
 
     const handleDeletePortfolio = async () => {
