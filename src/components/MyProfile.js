@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, Fab, List, ListItem, ListItemText, IconButton } from '@mui/material';
+import { Box, Typography, Button, Fab, List, ListItem, ListItemText } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘
 import AddIcon from '@mui/icons-material/Add'; // 포트폴리오 등록/작성 아이콘
-import EditIcon from '@mui/icons-material/Edit'; // 포트폴리오 수정 아이콘
-import DeleteIcon from '@mui/icons-material/Delete'; // 포트폴리오 삭제 아이콘
 import FolderIcon from '@mui/icons-material/Folder'; // 포트폴리오 목록 아이콘
 import axios from 'axios'; // API 호출을 위한 axios 추가
 
@@ -140,45 +138,9 @@ function MyProfile() {
         navigate('/portfolios/create'); // 포트폴리오 작성 페이지로 이동
     };
 
-    // 포트폴리오 수정 페이지로 이동
-    const handleEditPortfolio = (portfolioId) => {
-        navigate(`/portfolios/edit/${portfolioId}`); // 포트폴리오 수정 페이지로 이동
-    };
-
-    // 포트폴리오 삭제 처리
-    const handleDeletePortfolio = async (portfolioId) => {
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                const accessToken = localStorage.getItem('accessToken');
-                if (!accessToken) {
-                    navigate('/login');
-                    return;
-                }
-
-                const response = await axios.delete(`${process.env.REACT_APP_API_URL}/portfolios/${portfolioId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                // 401 에러 처리: accessToken 만료 시 로그인 페이지로 리다이렉션
-                if (response.status === 401) {
-                    navigate('/login');
-                    return;
-                }
-
-                // 삭제 성공 후 포트폴리오 상태 업데이트 (페이지 새로고침 없이)
-                setPortfolios(prevPortfolios => prevPortfolios.filter(p => p.portfolio_id !== portfolioId));
-            } catch (err) {
-                setError('포트폴리오 삭제 중 오류가 발생했습니다: ' + err.message);
-                console.error('삭제 오류:', err);
-                if (err.response?.status === 401) {
-                    navigate('/login');
-                    return; // 에러 후 리다이렉션 후 함수 종료
-                }
-            }
-        }
+    // 포트폴리오 상세 페이지로 이동
+    const handleViewPortfolioDetails = (portfolio) => {
+        navigate(`/portfolios/${portfolio.portfolio_id}`, { state: { portfolio } }); // 포트폴리오 데이터 상태로 전달, 경로 변경
     };
 
     // 본문 내용 자르기 (50자 이상이면 ... 추가)
@@ -233,13 +195,18 @@ function MyProfile() {
                     {portfolios.map((portfolio) => (
                         <ListItem
                             key={portfolio.portfolio_id}
+                            onClick={() => handleViewPortfolioDetails(portfolio)} // 아이템 클릭 시 상세 페이지로 이동
                             sx={{
                                 borderBottom: '1px solid #e0e0e0',
                                 padding: 2,
+                                cursor: 'pointer', // 클릭 가능함을 시각적으로 표시
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'flex-end', // 하단 정렬로 변경 (버튼을 가장 아래로 이동)
+                                alignItems: 'flex-end', // 하단 정렬 유지
                                 minHeight: 120, // 아이템 크기 유지
+                                '&:hover': {
+                                    backgroundColor: '#f5f5f5', // 호버 시 약간의 배경색 변화
+                                },
                             }}
                         >
                             <ListItemText
@@ -252,7 +219,8 @@ function MyProfile() {
                                 }
                                 sx={{ maxWidth: '70%' }} // 본문 공간 제한
                             />
-                            <Box sx={{ display: 'flex', gap: 0.5, alignSelf: 'flex-end' }}> {/* 버튼을 오른쪽 하단으로 강제 이동 */}
+                            {/* 수정 및 삭제 버튼 제거 */}
+                            <Box sx={{ display: 'flex', gap: 0.5, alignSelf: 'flex-end' }}>
                                 {/* 파일 타입이 이미지일 경우 원형(Circled) 이미지 배열 (오른쪽 상단) */}
                                 {portfolio.file_list && portfolio.file_list.some(file => file.file_type === 'IMAGE') && (
                                     <Box sx={{
@@ -284,44 +252,6 @@ function MyProfile() {
                                             ))}
                                     </Box>
                                 )}
-                                <Fab
-                                    color="success" // 녹색
-                                    aria-label={`edit-portfolio-${portfolio.portfolio_id}`}
-                                    onClick={() => handleEditPortfolio(portfolio.portfolio_id)}
-                                    sx={{
-                                        backgroundColor: '#4CAF50',
-                                        '&:hover': {
-                                            backgroundColor: '#45a049',
-                                            transform: 'scale(1.1) rotate(10deg)', // 귀여운 애니메이션 (확대 + 회전)
-                                            transition: 'transform 0.3s ease-in-out', // 부드러운 전환
-                                        },
-                                        borderRadius: '50%',
-                                        width: 36, // 버튼 크기 유지
-                                        height: 36, // 버튼 크기 유지
-                                        boxShadow: '0 3px 8px rgba(0, 0, 0, 0.2)', // 그림자 약간 조정
-                                    }}
-                                >
-                                    <EditIcon sx={{ color: '#fff', fontSize: 18 }} /> {/* 아이콘 크기 유지 */}
-                                </Fab>
-                                <Fab
-                                    color="error" // 빨간색
-                                    aria-label={`delete-portfolio-${portfolio.portfolio_id}`}
-                                    onClick={() => handleDeletePortfolio(portfolio.portfolio_id)}
-                                    sx={{
-                                        backgroundColor: '#f44336',
-                                        '&:hover': {
-                                            backgroundColor: '#d32f2f',
-                                            transform: 'scale(1.1) rotate(-10deg)', // 귀여운 애니메이션 (확대 + 반대 회전)
-                                            transition: 'transform 0.3s ease-in-out', // 부드러운 전환
-                                        },
-                                        borderRadius: '50%',
-                                        width: 36, // 버튼 크기 유지
-                                        height: 36, // 버튼 크기 유지
-                                        boxShadow: '0 3px 8px rgba(0, 0, 0, 0.2)', // 그림자 약간 조정
-                                    }}
-                                >
-                                    <DeleteIcon sx={{ color: '#fff', fontSize: 18 }} /> {/* 아이콘 크기 유지 */}
-                                </Fab>
                             </Box>
                         </ListItem>
                     ))}

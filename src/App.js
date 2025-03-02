@@ -9,7 +9,8 @@ import SignupPage from './components/Signup';
 import MyChatRoomList from './components/MyChatRoomList';
 import {Typography} from "@mui/material";
 import EditMatchingPost from "./components/EditMatchingPost";
-import CreatePortfolio from "./components/CreatePortfolio"; // 새로 추가
+import CreatePortfolio from "./components/CreatePortfolio";
+import DetailedPortfolio from "./components/DetailedPortfolio"; // 새로 추가
 
 function App() {
     return (
@@ -37,6 +38,7 @@ function App() {
                 <Route path="/chat-rooms" element={<MyChatRoomList/>}/> {/* 내가 참여하고 있는 채팅방 목록 */}
                 <Route path="/edit-matching-post/:id" element={<EditMatchingPost/>}/>
                 <Route path="/portfolios/create" element={<CreatePortfolio/>} />
+                <Route path="/portfolios/:portfolioId" element={<DetailedPortfolio />} />
             </Routes>
         </div>
     );
