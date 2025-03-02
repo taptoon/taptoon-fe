@@ -22,6 +22,7 @@
     "react-window": "^1.8.11",
     "sockjs-client": "^1.6.1",
     "typeface-bebas-neue": "^1.1.13",
+    "typeface-noto-sans-kr": "^1.1.13",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
