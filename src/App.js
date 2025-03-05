@@ -7,10 +7,12 @@ import ChatRoom from './components/ChatRoom';
 import Login from './components/Login';
 import SignupPage from './components/Signup';
 import MyChatRoomList from './components/MyChatRoomList';
-import {Typography} from "@mui/material"; // 새로 추가
+import {Typography} from "@mui/material";
+import {WebSocketProvider} from "./WebSocketContext"; // 새로 추가
 
 function App() {
     return (
+        <WebSocketProvider>
         <div style={{ padding: '20px' }}>
             {/* Taptoon 로고 및 텍스트를 Link로 감싸서 /로 리다이렉션 */}
             <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -35,6 +37,7 @@ function App() {
                 <Route path="/chat-rooms" element={<MyChatRoomList />} /> {/* 내가 참여하고 있는 채팅방 목록 */}
             </Routes>
         </div>
+        </WebSocketProvider>
     );
 }
 
