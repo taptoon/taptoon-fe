@@ -72,10 +72,8 @@ function MyChatRoomList() {
 
         fetchChatRooms();
 
-        const accessToken = localStorage.getItem('accessToken');
-        const userId = getUserIdFromToken(accessToken);
-
-        if (wsRef.current && userId) {
+// WebSocket 연결 상태 확인 후 메시지 처리
+        if (wsRef.current) {
             wsRef.current.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log('Received:', data);
@@ -89,7 +87,7 @@ function MyChatRoomList() {
                             updatedRooms.push({
                                 room_id: Number(newRoom.room_id),
                                 last_message: newRoom.last_message,
-                                last_message_time: new Date(Number(newRoom.last_message_time)).toISOString(), // 밀리초 파싱
+                                last_message_time: new Date(Number(newRoom.last_message_time)).toISOString(),
                                 unread_count: Number(newRoom.unread_count || 0),
                                 member_count: Number(newRoom.member_count || 0),
                             });
@@ -99,7 +97,7 @@ function MyChatRoomList() {
                                     return {
                                         ...room,
                                         last_message: data.message,
-                                        last_message_time: new Date(Number(data.timestamp)).toISOString(), // timestamp 사용
+                                        last_message_time: new Date(Number(data.timestamp)).toISOString(),
                                         unread_count: Number(data.unread_count || 0),
                                     };
                                 }
@@ -120,9 +118,9 @@ function MyChatRoomList() {
         };
     }, [navigate, wsRef]);
 
-    // 채팅방 클릭 시 ChatRoom.js로 이동 (chatRoomId 전달)
+    // 채팅방 클릭 시 ChatRoom.js로 이동
     const handleChatRoomClick = (roomId) => {
-        navigate(`/chat/${roomId}`); // 채팅방 상세 페이지로 이동 (ChatRoom.js로 라우팅)
+        navigate(`/chat/${roomId}`);
     };
 
     if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;
