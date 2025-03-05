@@ -17,10 +17,10 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import CloseIcon from '@mui/icons-material/Close';
-import AttachFileIcon from '@mui/icons-material/AttachFile'; // 파일 아이콘
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import axios from 'axios';
 
-function MatchingPostCreate() {
+function CreateMatchingPost() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [artistType, setArtistType] = useState('WRITER');
@@ -53,7 +53,6 @@ function MatchingPostCreate() {
         if (response.data.success_or_fail) {
           setMatchingPostId(response.data.data); // 반환된 ID 저장
         } else {
-          // 여기서 AccessToken refresh 해줘야 하는데 아직 그 로직이 없다. 우선 로그인 창으로 빼야 할까?
           throw new Error(response.data.message || '매칭 포스트 ID 생성 실패');
         }
       } catch (err) {
@@ -66,8 +65,7 @@ function MatchingPostCreate() {
 
   // 파일 입력 필드 클릭 시 이미지 제한 확인
   const handleFileInputClick = (event) => {
-    const currentImages = files.filter(file => file.type.startsWith('image/')).length;
-    if (currentImages >= MAX_FILES) {
+    if (files.length >= MAX_FILES) {
       event.preventDefault();
       alert(`이미지는 최대 ${MAX_FILES}장까지 업로드할 수 있습니다.`);
     }
@@ -76,9 +74,8 @@ function MatchingPostCreate() {
   // 파일/이미지 선택 핸들러 (Presigned URL 받아서 S3 업로드)
   const handleFileChange = async (event) => {
     const newFiles = Array.from(event.target.files).filter(file => file.type.startsWith('image/')); // 이미지 파일만 필터링
-    const currentImages = files.filter(file => file.type.startsWith('image/')).length;
 
-    if (currentImages + newFiles.length > MAX_FILES) {
+    if (files.length + newFiles.length > MAX_FILES) {
       alert(`이미지는 최대 ${MAX_FILES}장까지 업로드할 수 있습니다.`);
       return;
     }
@@ -92,11 +89,11 @@ function MatchingPostCreate() {
           throw new Error('매칭 포스트 ID가 설정되지 않았습니다.');
         }
 
-        // 1. Presigned URL 및 MatchingPostImage ID 요청
-        // directory는 'matchingpost', id는 matchingPostId, fileName은 파일 이름 사용
+        // Presigned URL 및 MatchingPostImage ID 요청
         const presignedResponse = await axios.post(`${process.env.REACT_APP_API_URL}/images/upload`, {
-          directory: 'matchingpost',
+          directory: `${process.env.REACT_APP_S3_MATCHING_POST_DIRECTORY}`,
           id: matchingPostId,
+          file_type: `${process.env.REACT_APP_S3_IMAGE_TYPE}`,
           file_name: file.name,
         }, {
           headers: {
@@ -112,7 +109,7 @@ function MatchingPostCreate() {
         const presignedUrl = presignedResponse.data.data.uploading_image_url;
         const imageEntityId = presignedResponse.data.data.image_entity_id;
 
-        // 2. S3에 파일 업로드 (Presigned URL 사용)
+        // S3에 파일 업로드
         await axios.put(presignedUrl, file, {
           headers: {
             'Content-Type': file.type || 'application/octet-stream',
@@ -134,39 +131,13 @@ function MatchingPostCreate() {
     }
   };
 
-  // 파일/이미지 삭제 핸들러 (S3 및 DB에서 삭제)
-  const handleFileRemove = async (index) => {
-    const fileToRemove = files[index];
-    const imageIdToRemove = matchingPostImageIds[index];
-
-    if (!imageIdToRemove || !matchingPostId) {
-      setFiles(files.filter((_, i) => i !== index));
-      setMatchingPostImageIds(matchingPostImageIds.filter((_, i) => i !== index));
-      return;
-    }
-
-    setUploading(true);
-    setUploadError(null);
-
-    try {
-      // 서버에 이미지 삭제 요청 (S3 및 DB에서 제거)
-      await axios.delete(`${process.env.REACT_APP_API_URL}/matching-posts/images/${imageIdToRemove}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
-        },
-      });
-
-      // 로컬 상태 업데이트
-      setFiles(files.filter((_, i) => i !== index));
-      setMatchingPostImageIds(matchingPostImageIds.filter((_, i) => i !== index));
-    } catch (err) {
-      setUploadError('이미지 삭제 실패: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setUploading(false);
-    }
+  // 파일/이미지 삭제 핸들러 (로컬 상태만 업데이트, S3 및 DB 삭제 요청 X)
+  const handleFileRemove = (index) => {
+    setFiles(files.filter((_, i) => i !== index));
+    setMatchingPostImageIds(matchingPostImageIds.filter((_, i) => i !== index));
   };
 
-  // 폼 제출 핸들러 (JSON 형식으로 매칭 포스트 수정/등록)
+  // 폼 제출 핸들러 (JSON 형식으로 매칭 포스트 등록)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!matchingPostId) {
@@ -184,7 +155,6 @@ function MatchingPostCreate() {
     setUploadError(null);
 
     try {
-      // JSON 데이터 준비
       const requestData = {
         title,
         description,
@@ -193,11 +163,10 @@ function MatchingPostCreate() {
         matching_post_image_ids: matchingPostImageIds, // 이미지 ID 리스트
       };
 
-      // JSON 형식으로 PUT 요청
-      const response = await axios.put(`${process.env.REACT_APP_API_URL}/matching-posts/${matchingPostId}`, requestData, {
+      const response = await axios.put(`${process.env.REACT_APP_API_URL}/matching-posts/${matchingPostId}/registration`, requestData, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json', // JSON 형식으로 변경
+          'Content-Type': 'application/json',
         },
       });
 
@@ -329,4 +298,4 @@ function MatchingPostCreate() {
   );
 }
 
-export default MatchingPostCreate;
+export default CreateMatchingPost;

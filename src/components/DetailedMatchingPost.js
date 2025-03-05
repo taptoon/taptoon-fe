@@ -5,7 +5,7 @@ import ChatIcon from '@mui/icons-material/Chat'; // 채팅 아이콘
 import EditIcon from '@mui/icons-material/Edit'; // 수정 아이콘
 import DeleteIcon from '@mui/icons-material/Delete'; // 삭제 아이콘
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import './MatchingPostDetail.css';
+import './DetailedMatchingPost.css';
 import { jwtDecode } from 'jwt-decode';
 
 const theme = createTheme({
@@ -25,7 +25,7 @@ const theme = createTheme({
   },
 });
 
-function MatchingPostDetail() {
+function DetailedMatchingPost() {
   const { id } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -106,23 +106,40 @@ function MatchingPostDetail() {
             'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
           },
         });
-        if (!response.ok) throw new Error('삭제에 실패했습니다.');
+
+        if (!response.ok) {
+          throw new Error('삭제에 실패했습니다.');
+        }
+
+        // 204 No Content인 경우 본문이 없으므로 json() 호출하지 않음
+        if (response.status === 204) {
+          console.log('삭제 성공');
+          alert('게시물이 성공적으로 삭제되었습니다.');
+          navigate(-1); // 이전 페이지로 이동
+          return;
+        }
+
+        // 다른 상태 코드(예: 200)일 경우 JSON 파싱
         const result = await response.json();
-        if (result.success_or_fail) {
-          alert('게시글이 성공적으로 삭제되었습니다.');
-          navigate(-1); // 삭제 후 이전 페이지로 돌아감 (history.back()와 유사)
+        if (result.successOrFail) {
+          console.log('success');
+          alert('게시물이 성공적으로 삭제되었습니다.');
+          navigate(-1);
         } else {
           throw new Error(result.message || '삭제 실패');
         }
       } catch (err) {
         setError(err.message);
+        console.error('삭제 오류:', err);
       }
     }
   };
 
-  // 수정 처리 함수 (수정 페이지로 이동)
+  // 수정 처리 함수 (수정 페이지로 이동, 데이터 상태로 전달)
   const handleEdit = () => {
-    navigate(`/edit-matching-post/${id}`); // EditMatchingPost.js로 이동
+    if (post) {
+      navigate(`/edit-matching-post/${id}`, { state: { post } }); // post 데이터를 상태로 전달
+    }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;
@@ -151,7 +168,7 @@ function MatchingPostDetail() {
                     {post.image_list.map((imageObject, index) => (
                         <ImageListItem key={index}>
                           <img
-                              src={imageObject.image_url}
+                              src={imageObject.original_image_url}
                               alt={`이미지 ${index + 1}`}
                               loading="lazy"
                               onError={(e) => { e.target.src = 'https://picsum.photos/300/200?text=Error'; }}
@@ -226,4 +243,4 @@ function MatchingPostDetail() {
   );
 }
 
-export default MatchingPostDetail;
+export default DetailedMatchingPost;
