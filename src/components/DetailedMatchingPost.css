@@ -1,25 +1,97 @@
+/* 기존 스타일 유지 */
 .MuiCard-root {
     transition: box-shadow 0.3s ease, transform 0.3s ease;
-  }
-  
-  .MuiCard-root:hover {
+}
+
+.MuiCard-root:hover {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     transform: scale(1.02);
-  }
-  
-  .MuiButton-containedPrimary {
+}
+
+.MuiButton-containedPrimary {
     transition: background-color 0.3s ease, transform 0.3s ease;
-  }
-  
-  .MuiButton-containedPrimary:hover {
+}
+
+.MuiButton-containedPrimary:hover {
     transform: scale(1.05);
-  }
-  
-  .MuiImageList-root {
+}
+
+.MuiImageList-root {
     border-radius: 8px;
     overflow: hidden;
-  }
-  
-  .MuiImageListItem-root:hover img {
+}
+
+.MuiImageListItem-root:hover img {
     opacity: 0.8;
-  }
+}
+
+/* 댓글 및 답글 스타일 */
+.comment-card {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.comment-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.reply-card {
+    background-color: #f0f7f4;
+    border-radius: 8px;
+    padding: 8px;
+    margin-bottom: 8px;
+    margin-left: 16px; /* 답글 들여쓰기 */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reply-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.MuiTextField-root {
+    border-radius: 8px;
+}
+
+.MuiButton-root {
+    border-radius: 16px; /* 버튼 둥글기 증가 */
+    minWidth: 120px; /* 고정된 최소 너비 */
+    fontSize: 0.875rem; /* 텍스트 크기 조정 (단위 포함) */
+}
+
+.MuiIconButton-root {
+    border-radius: 50%;
+}
+
+/* 보라색 버튼 호버 효과 */
+.MuiButton-containedPurple {
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.MuiButton-containedPurple:hover {
+    background-color: #7B1FA2; /* 더 진한 보라색 */
+    transform: scale(1.05);
+}
+
+/* 비활성화된 버튼 스타일 */
+.MuiButton-disabled {
+    background-color: #cccccc;
+    color: #666666;
+    opacity: 0.7;
+}
+
+/* 답글 토글 버튼 스타일 */
+.MuiButton-textPrimary {
+    text-transform: none;
+    font-size: 0.875rem;
+    padding: 4px 8px;
+}
+
+.MuiButton-textPrimary:hover {
+    background-color: transparent;
+    text-decoration: underline;
+}
