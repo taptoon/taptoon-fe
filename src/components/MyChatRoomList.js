@@ -1,5 +1,6 @@
 // MyChatRoomList.js
 import { useEffect, useState } from 'react';
+import { useWebSocket } from '../WebSocketContext';
 import {
     Badge,
     Box,
@@ -13,12 +14,24 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'; // 이동 아이콘
+import { jwtDecode } from 'jwt-decode';
 
 function MyChatRoomList() {
     const [chatRooms, setChatRooms] = useState([]); // 채팅방 리스트 상태
     const [loading, setLoading] = useState(true); // 로딩 상태
     const [error, setError] = useState(null); // 에러 상태
     const navigate = useNavigate();
+    const { wsRef } = useWebSocket();
+
+    const getUserIdFromToken = (token) => {
+        try {
+            const decoded = jwtDecode(token);
+            return decoded.sub || null;
+        } catch (err) {
+            console.error('JWT 디코딩 실패:', err);
+            return null;
+        }
+    };
 
     // 컴포넌트 마운트 시 채팅방 리스트 API 호출
     useEffect(() => {
@@ -58,11 +71,56 @@ function MyChatRoomList() {
         };
 
         fetchChatRooms();
-    }, [navigate]); // navigate를 의존성에 추가
 
-    // 채팅방 클릭 시 ChatRoom.js로 이동 (chatRoomId 전달)
+// WebSocket 연결 상태 확인 후 메시지 처리
+        if (wsRef.current) {
+            wsRef.current.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log('Received:', data);
+                if (data.type === 'message') {
+                    setChatRooms((prevRooms) => {
+                        const roomExists = prevRooms.some(room => room.room_id === Number(data.chatRoomId));
+                        let updatedRooms = [...prevRooms];
+
+                        if (!roomExists && data.chatRoom) {
+                            const newRoom = data.chatRoom;
+                            updatedRooms.push({
+                                room_id: Number(newRoom.room_id),
+                                last_message: newRoom.last_message,
+                                last_message_time: new Date(Number(newRoom.last_message_time)).toISOString(),
+                                unread_count: Number(newRoom.unread_count || 0),
+                                member_count: Number(newRoom.member_count || 0),
+                            });
+                        } else {
+                            updatedRooms = updatedRooms.map((room) => {
+                                if (room.room_id === Number(data.chatRoomId)) {
+                                    return {
+                                        ...room,
+                                        last_message: data.message,
+                                        last_message_time: new Date(Number(data.timestamp)).toISOString(),
+                                        unread_count: Number(data.unread_count || 0),
+                                    };
+                                }
+                                return room;
+                            });
+                        }
+                        console.log('Updated Rooms:', updatedRooms);
+                        return updatedRooms;
+                    });
+                }
+            };
+        }
+
+        return () => {
+            if (wsRef.current) {
+                wsRef.current.onmessage = null;
+            }
+        };
+    }, [navigate, wsRef]);
+
+    // 채팅방 클릭 시 ChatRoom.js로 이동
     const handleChatRoomClick = (roomId) => {
-        navigate(`/chat/${roomId}`); // 채팅방 상세 페이지로 이동 (ChatRoom.js로 라우팅)
+        navigate(`/chat/${roomId}`);
     };
 
     if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;

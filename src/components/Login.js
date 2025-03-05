@@ -4,6 +4,9 @@ import { Container, TextField, Button, Box, Typography, IconButton } from '@mui/
 import CloseIcon from '@mui/icons-material/Close';
 import GoogleIcon from '@mui/icons-material/Google'; // Google 아이콘 (MUI에서 제공)
 import { useNavigate, useSearchParams } from 'react-router-dom'; // useSearchParams 추가
+import { jwtDecode } from 'jwt-decode'; // JWT 디코딩 추가
+import { useWebSocket } from '../WebSocketContext'; // Context 훅 추가
+import { useAuth } from '../AuthContext'; // AuthContext 추가
 
 // Naver 아이콘은 커스텀 이미지로 대체 가능 (예: import NaverIcon from './naver-icon.png')
 const NaverIcon = () => (
@@ -19,6 +22,19 @@ function Login() {
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const [searchParams] = useSearchParams(); // URL 쿼리 파라미터 가져오기
+    const { connectWebSocket } = useWebSocket(); // 전역 WebSocket 사용
+    const { login } = useAuth(); // AuthContext로 인증 상태 관리
+
+    // JWT에서 userId 추출 함수
+    const getUserIdFromToken = (token) => {
+        try {
+            const decoded = jwtDecode(token);
+            return decoded.sub || null; // 'sub'에서 userId 추출 (서버 JWT 구조에 따라 조정 필요)
+        } catch (err) {
+            console.error('JWT 디코딩 실패:', err);
+            return null;
+        }
+    };
 
     // 일반 로그인 처리 (기존 로직 유지)
     const handleLogin = async (e) => {
@@ -39,7 +55,15 @@ function Login() {
 
             localStorage.setItem('accessToken', accessToken); // 토큰 저장
             localStorage.setItem('refreshToken', refreshToken);
-            navigate('/');
+
+            const userId = getUserIdFromToken(accessToken);
+            if (userId) {
+                login(userId, accessToken); // AuthContext로 인증 상태 설정
+                connectWebSocket(userId, accessToken); // WebSocket 연결
+                navigate('/');
+            } else {
+                throw new Error('토큰에서 userId를 추출할 수 없습니다.');
+            }
         } catch (err) {
             setError('로그인에 실패했습니다. 이메일과 비밀번호를 확인하세요.');
         }
@@ -72,13 +96,20 @@ function Login() {
 
                 localStorage.setItem('accessToken', cleanAccessToken); // 토큰 저장
                 localStorage.setItem('refreshToken', cleanRefreshToken);
-                navigate('/'); // 메인 페이지로 이동
+                const userId = getUserIdFromToken(cleanAccessToken);
+                if (userId) {
+                    login(userId, cleanAccessToken); // AuthContext로 인증 상태 설정
+                    connectWebSocket(userId, cleanAccessToken); // WebSocket 연결
+                    navigate('/');
+                } else {
+                    throw new Error('토큰에서 userId를 추출할 수 없습니다.');
+                }
             } catch (err) {
                 setError('네이버 로그인 토큰 처리 중 오류가 발생했습니다.');
                 console.error('Naver OAuth token error:', err);
             }
         }
-    }, [searchParams, navigate]); // searchParams와 navigate를 의존성에 추가
+    }, [searchParams, navigate, connectWebSocket, login]); // searchParams와 navigate를 의존성에 추가
 
     return (
         <Container maxWidth="sm" sx={{ p: 4 }}>
