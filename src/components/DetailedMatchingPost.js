@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card, CardContent, CardHeader, Typography, Box, ImageList, ImageListItem,
@@ -8,8 +8,8 @@ import {
 import ChatIcon from '@mui/icons-material/Chat';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import Comment from '@mui/icons-material/Comment'; // CommentIcon 대신 Comment 사용
-import ReplyIcon from '@mui/icons-material/Reply'; // ReplyIcon 유지
+import Comment from '@mui/icons-material/Comment';
+import ReplyIcon from '@mui/icons-material/Reply';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import './DetailedMatchingPost.css';
 import { jwtDecode } from 'jwt-decode';
@@ -18,9 +18,9 @@ const theme = createTheme({
   palette: {
     primary: { main: '#1976d2' },
     secondary: { main: '#f50057' },
-    green: { main: '#4CAF50' }, // 초록색 (수정 버튼용)
-    red: { main: '#f44336' }, // 빨간색 (삭제 버튼용)
-    purple: { main: '#9C27B0' }, // 보라색 (답글 추가 버튼용)
+    green: { main: '#4CAF50' },
+    red: { main: '#f44336' },
+    purple: { main: '#9C27B0' },
   },
   components: {
     MuiPaper: {
@@ -69,12 +69,13 @@ function DetailedMatchingPost() {
   const [newReply, setNewReply] = useState({});
   const [editingComment, setEditingComment] = useState(null);
   const [editedContent, setEditedContent] = useState('');
-  const [replyOpen, setReplyOpen] = useState({}); // 각 댓글의 답글 토글 상태
+  const [replyOpen, setReplyOpen] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPostAndComments = async () => {
       try {
+        setLoading(true);
         // 게시글 상세 정보 조회
         const postResponse = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`);
         if (!postResponse.ok) throw new Error('게시글 상세 정보를 불러오지 못했습니다.');
@@ -86,7 +87,7 @@ function DetailedMatchingPost() {
         }
 
         // 댓글 목록 조회 (부모 댓글만)
-        const commentsResponse = await fetch(`${process.env.REACT_APP_API_URL}/comments/matching-post/${id}`);
+        const commentsResponse = await fetch(`${process.env.REACT_APP_API_URL}/comments?matchingPostId=${id}`);
         if (!commentsResponse.ok) throw new Error('댓글 목록을 불러오지 못했습니다.');
         const commentsResult = await commentsResponse.json();
         if (commentsResult.success_or_fail) {
@@ -116,10 +117,16 @@ function DetailedMatchingPost() {
     }
   };
 
-  // 현재 유저가 댓글/답글 작성자인지 확인
-  const isCurrentUserAuthor = (comment) => {
+  // 현재 유저가 매칭 포스트 작성자인지 확인
+  const isPostAuthor = () => {
     const currentUserId = getCurrentUserId();
-    return currentUserId === comment?.member_id; // snake_case 유지
+    return currentUserId === post?.author_id;
+  };
+
+  // 현재 유저가 댓글/답글 작성자인지 확인
+  const isCommentAuthor = (comment) => {
+    const currentUserId = getCurrentUserId();
+    return currentUserId === comment?.member_id;
   };
 
   // 로그인 상태 확인
@@ -152,7 +159,7 @@ function DetailedMatchingPost() {
     }
 
     if (currentUserId === receiverId) {
-      alert('자기 자신에게는 채팅을 보낼 수 없습니다.');
+      setError('자기 자신에게는 채팅을 보낼 수 없습니다.');
       return;
     }
 
@@ -161,33 +168,35 @@ function DetailedMatchingPost() {
 
   // 삭제 처리 함수
   const handleDelete = async (commentId) => {
-    if (window.confirm('정말 삭제하시겠습니까?')) {
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
-        });
+    if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
-        if (!response.ok) {
-          if (handleUnauthorized(response)) return;
-          throw new Error('삭제에 실패했습니다.');
-        }
-        if (response.status === 204) {
-          alert('댓글이 성공적으로 삭제되었습니다.');
-          setComments(comments.filter(comment => comment.comment_id !== commentId));
-        } else {
-          const result = await response.json();
-          if (result.success_or_fail) {
-            alert('댓글이 성공적으로 삭제되었습니다.');
-            setComments(comments.filter(comment => comment.comment_id !== commentId));
-          } else {
-            throw new Error(result.message || '삭제 실패');
-          }
-        }
-      } catch (err) {
-        setError(err.message);
-        console.error('삭제 오류:', err);
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
+      });
+
+      if (!response.ok) {
+        if (handleUnauthorized(response)) return;
+        throw new Error('삭제에 실패했습니다.');
       }
+      if (response.status === 204) {
+        // 부모 댓글 삭제
+        setComments(comments.filter(comment => comment.comment_id !== commentId));
+        // 답글 삭제 후 부모 댓글의 답글 목록 갱신
+        const parentComment = comments.find(comment => comment.replies?.some(reply => reply.comment_id === commentId));
+        if (parentComment) {
+          await loadReplies(parentComment.comment_id);
+        }
+      } else {
+        throw new Error('예상치 못한 응답 상태입니다.');
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('삭제 오류:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,7 +209,8 @@ function DetailedMatchingPost() {
   // 수정 저장 함수
   const handleSaveEdit = async (commentId, matchingPostId) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/matching-post/${matchingPostId}/comment/${commentId}`, {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${commentId}?matchingPostId=${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
@@ -213,19 +223,37 @@ function DetailedMatchingPost() {
         if (handleUnauthorized(response)) return;
         throw new Error('수정에 실패했습니다.');
       }
-      const result = await response.json();
-      if (result.success_or_fail) {
-        setComments(comments.map(comment =>
-            comment.comment_id === commentId ? { ...comment, content: editedContent } : comment
-        ));
+
+      if (response.status === 204) {
+        // Update the state for both parent comments and replies
+        setComments(prevComments => {
+          return prevComments.map(comment => {
+            // If the edited comment is a parent comment
+            if (comment.comment_id === commentId) {
+              return { ...comment, content: editedContent };
+            }
+            // If the edited comment is a reply, update it in the replies array
+            if (comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                    reply.comment_id === commentId ? { ...reply, content: editedContent } : reply
+                ),
+              };
+            }
+            return comment;
+          });
+        });
         setEditingComment(null);
         setEditedContent('');
       } else {
-        throw new Error(result.message || '수정 실패');
+        throw new Error('예상치 못한 응답 상태입니다.');
       }
     } catch (err) {
       setError(err.message);
       console.error('수정 오류:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -240,7 +268,8 @@ function DetailedMatchingPost() {
     }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/matching-post/${id}`, {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments?matchingPostId=${id}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
@@ -263,6 +292,8 @@ function DetailedMatchingPost() {
     } catch (err) {
       setError(err.message);
       console.error('댓글 생성 오류:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -276,7 +307,8 @@ function DetailedMatchingPost() {
     }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/reply/${parentCommentId}`, {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/${parentCommentId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`,
@@ -305,42 +337,66 @@ function DetailedMatchingPost() {
     } catch (err) {
       setError(err.message);
       console.error('답글 생성 오류:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 답글 로드 함수
-  const loadReplies = async (commentId) => {
+  // 답글 로드 함수 (캐싱 및 리프레시 방지 최적화)
+  const loadReplies = useCallback(async (commentId) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/reply/${commentId}`);
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/replies/${commentId}`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
+      });
       if (!response.ok) throw new Error('답글 목록을 불러오지 못했습니다.');
       const result = await response.json();
       if (result.success_or_fail) {
-        setComments(comments.map(comment =>
-            comment.comment_id === commentId ? { ...comment, replies: result.data.replies || [] } : comment
-        ));
+        setComments(prevComments => {
+          return prevComments.map(comment =>
+              comment.comment_id === commentId
+                  ? { ...comment, replies: result.data.replies || [] }
+                  : comment
+          );
+        });
       } else {
         throw new Error(result.message || '답글 로드 실패');
       }
     } catch (err) {
       setError(err.message);
       console.error('답글 로드 오류:', err);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []); // 의존성 배열 비우기 (불필요한 재생성 방지)
 
-  // 답글 토글 함수
-  const toggleReplies = (commentId) => {
+  // 답글 토글 함수 (리프레시 방지 및 최적화)
+  const toggleReplies = useCallback((commentId) => {
     setReplyOpen(prev => ({
       ...prev,
       [commentId]: !prev[commentId],
     }));
+
     if (!replyOpen[commentId]) {
-      loadReplies(commentId); // 답글 열 때만 로드
+      const commentWithReplies = comments.find(comment => comment.comment_id === commentId);
+      if (!commentWithReplies?.replies || commentWithReplies.replies.length === 0) {
+        loadReplies(commentId);
+      }
     }
-  };
+  }, [replyOpen, comments, loadReplies]); // 의존성 배열에 필요한 것만 추가
 
   if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;
-  if (error) return <div>오류: {error}</div>;
-  if (!post) return <div>게시글을 찾을 수 없습니다.</div>;
+  if (error) return <div style={{ textAlign: 'center', padding: '20px', color: '#f44336' }}>오류: {error}</div>;
+  if (!post) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>게시글을 찾을 수 없습니다.</div>;
+
+  // 날짜와 시간(시:분)만 표시하는 함수
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    const datePart = date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    const timePart = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+    return `${datePart} ${timePart}`;
+  };
 
   return (
       <ThemeProvider theme={theme}>
@@ -356,7 +412,7 @@ function DetailedMatchingPost() {
                 {post.description}
               </Typography>
               <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
-                조회수: {post.view_count} | 작성일: {new Date(post.created_at).toLocaleString()} | 수정일: {new Date(post.updated_at).toLocaleString()}
+                조회수: {post.view_count} | 작성일: {formatDateTime(post.created_at)} | 수정일: {formatDateTime(post.updated_at)}
               </Typography>
               {post.image_list && post.image_list.length > 0 && (
                   <ImageList sx={{ width: '100%', height: 300, mb: 4 }} cols={3} rowHeight={150}>
@@ -376,7 +432,7 @@ function DetailedMatchingPost() {
             </CardContent>
 
             {/* 작성자일 때만 오른쪽 상단 끝에 수정 및 삭제 버튼 표시 */}
-            {isCurrentUserAuthor() && (
+            {isPostAuthor() && (
                 <Box sx={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 1 }}>
                   <IconButton
                       color="green"
@@ -415,7 +471,7 @@ function DetailedMatchingPost() {
               <Box sx={{ mb: 2, pl: 0, display: 'flex', gap: 2, alignItems: 'center' }}>
                 <TextField
                     fullWidth
-                    variant="outlined"
+                    variant="standard"
                     placeholder="댓글을 입력하세요..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
@@ -439,10 +495,11 @@ function DetailedMatchingPost() {
             </form>
 
             {/* 댓글 목록 */}
-            <List>
+            <List component="div" disablePadding>
               {comments?.map((comment) => (
                   <Box key={comment.comment_id}>
                     <ListItem
+                        component="div"
                         sx={{
                           mb: 1,
                           borderRadius: 8,
@@ -453,13 +510,13 @@ function DetailedMatchingPost() {
                         }}
                     >
                       <ListItemText
-                          primary={`${comment.member_nickname} (ID: ${comment.member_id})`}
+                          primary={`${comment.member_nickname} (ID: ${comment.member_id}) ${formatDateTime(comment.updated_at)}`}
                           secondary={
                             editingComment === comment.comment_id ? (
                                 <Box sx={{ mt: 1 }}>
                                   <TextField
                                       fullWidth
-                                      variant="outlined"
+                                      variant="standard"
                                       value={editedContent}
                                       onChange={(e) => setEditedContent(e.target.value)}
                                       sx={{ mb: 1, borderRadius: 8 }}
@@ -484,15 +541,13 @@ function DetailedMatchingPost() {
                                   </Box>
                                 </Box>
                             ) : (
-                                <Typography variant="body2" sx={{ mt: 1 }}>
-                                  {comment.content}
-                                </Typography>
+                                <Box sx={{ mt: 1 }}>{comment.content}</Box>
                             )
                           }
                           sx={{ pl: 0 }}
                       />
                       <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-                        {isCurrentUserAuthor(comment) && (
+                        {isCommentAuthor(comment) && (
                             <>
                               <IconButton
                                   color="green"
@@ -544,6 +599,7 @@ function DetailedMatchingPost() {
                             {comment.replies.map((reply) => (
                                 <ListItem
                                     key={reply.comment_id}
+                                    component="div"
                                     sx={{
                                       mb: 1,
                                       borderRadius: 8,
@@ -555,13 +611,13 @@ function DetailedMatchingPost() {
                                     }}
                                 >
                                   <ListItemText
-                                      primary={`${reply.member_nickname} (ID: ${reply.member_id})`}
+                                      primary={`${reply.member_nickname} (ID: ${reply.member_id}) ${formatDateTime(reply.updated_at)}`}
                                       secondary={
                                         editingComment === reply.comment_id ? (
                                             <Box sx={{ mt: 1 }}>
                                               <TextField
                                                   fullWidth
-                                                  variant="outlined"
+                                                  variant="standard"
                                                   value={editedContent}
                                                   onChange={(e) => setEditedContent(e.target.value)}
                                                   sx={{ mb: 1, borderRadius: 8 }}
@@ -586,15 +642,13 @@ function DetailedMatchingPost() {
                                               </Box>
                                             </Box>
                                         ) : (
-                                            <Typography variant="body2" sx={{ mt: 1 }}>
-                                              {reply.content}
-                                            </Typography>
+                                            <Box sx={{ mt: 1 }}>{reply.content}</Box>
                                         )
                                       }
                                       sx={{ pl: 0 }}
                                   />
                                   <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-                                    {isCurrentUserAuthor(reply) && (
+                                    {isCommentAuthor(reply) && (
                                         <>
                                           <IconButton
                                               color="green"
@@ -634,7 +688,7 @@ function DetailedMatchingPost() {
                           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                             <TextField
                                 fullWidth
-                                variant="outlined"
+                                variant="standard"
                                 placeholder="답글을 입력하세요..."
                                 value={newReply[comment.comment_id] || ''}
                                 onChange={(e) => setNewReply({ ...newReply, [comment.comment_id]: e.target.value })}
@@ -645,11 +699,11 @@ function DetailedMatchingPost() {
                                 variant="contained"
                                 color="purple"
                                 startIcon={<ReplyIcon />}
-                                disabled={!isLoggedIn()} // 로그인 상태 확인
+                                disabled={!isLoggedIn()}
                                 sx={{
-                                  borderRadius: 16, // 둥근 모서리
-                                  minWidth: 120, // 고정된 최소 너비
-                                  fontSize: '0.875rem', // 텍스트 크기 줄이기
+                                  borderRadius: 16,
+                                  minWidth: 120,
+                                  fontSize: '0.875rem',
                                 }}
                             >
                               답글 추가
@@ -665,7 +719,7 @@ function DetailedMatchingPost() {
           </Paper>
 
           {/* 작성자가 아닌 경우에만 오른쪽 하단 플로팅 채팅 버튼 표시 */}
-          {!isCurrentUserAuthor() && (
+          {!isPostAuthor() && (
               <Fab
                   color="green"
                   aria-label="chat"
