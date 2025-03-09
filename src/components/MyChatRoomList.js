@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // useCallback 추가
 import { useWebSocket } from '../WebSocketContext';
 import {
     Badge,
@@ -10,9 +10,11 @@ import {
     ListItemSecondaryAction,
     ListItemText,
     Typography,
+    Tooltip, // 툴팁 추가
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import DeleteIcon from '@mui/icons-material/Delete'; // 삭제 아이콘 추가
 import { jwtDecode } from 'jwt-decode';
 
 function MyChatRoomList() {
@@ -22,6 +24,7 @@ function MyChatRoomList() {
     const navigate = useNavigate();
     const { ws, wsRef, connectWebSocket } = useWebSocket();
 
+    // JWT에서 userId 추출
     const getUserIdFromToken = (token) => {
         try {
             const decoded = jwtDecode(token);
@@ -32,6 +35,7 @@ function MyChatRoomList() {
         }
     };
 
+    // unread_count 가져오기 헬퍼 함수
     const fetchUnreadCount = async (chatRoomId, token) => {
         try {
             const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/${chatRoomId}/unread`, {
@@ -43,91 +47,124 @@ function MyChatRoomList() {
             });
             if (!response.ok) throw new Error('unreadCount 가져오기 실패');
             const result = await response.json();
-            console.log(`unreadCount for ${chatRoomId}:`, result.data); // 디버깅용
             return result.data || 0;
         } catch (err) {
-            console.error('unreadCount 조회 실패:', err);
+            console.error(`unreadCount 조회 실패 (chatRoomId: ${chatRoomId}):`, err);
             return 0;
         }
     };
 
+    // 채팅방 리스트 가져오기
+    const fetchChatRooms = async (token) => {
+        try {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-rooms`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) throw new Error('채팅방 리스트를 가져오지 못했습니다.');
+            const result = await response.json();
+            if (!result.success_or_fail) throw new Error(result.message || '채팅방 리스트 로드 실패');
+
+            const rooms = result.data || [];
+            const updatedRooms = await Promise.all(
+                rooms.map(async (room) => ({
+                    ...room,
+                    unread_count: await fetchUnreadCount(room.room_id, token),
+                }))
+            );
+            setChatRooms(updatedRooms);
+        } catch (err) {
+            setError(err.message);
+            if (err.message.includes('로그인')) navigate('/login');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 채팅방 삭제 함수 추가
+    const handleDeleteChatRoom = async (chatRoomId) => {
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+            setError('로그인 정보가 없습니다.');
+            return;
+        }
+        try {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-room/${chatRoomId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) throw new Error('채팅방 삭제 실패');
+            setChatRooms((prevRooms) => prevRooms.filter((room) => room.room_id !== chatRoomId));
+            console.log(`Chat room ${chatRoomId} deleted`);
+        } catch (err) {
+            setError(`채팅방 삭제 실패: ${err.message}`);
+        }
+    };
+
+    // WebSocket 메시지 처리 (useCallback으로 최적화)
+    const handleWebSocketMessage = useCallback((event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received WebSocket message:', data);
+        if (data.type === 'message') {
+            setChatRooms((prevRooms) => {
+                const updatedRooms = prevRooms.filter((room) => room.room_id !== data.chatRoomId);
+                const existingRoom = prevRooms.find((room) => room.room_id === data.chatRoomId) || {};
+                const updatedRoom = {
+                    room_id: data.chatRoomId,
+                    last_message: data.message,
+                    last_message_time: new Date(data.timestamp).toISOString(),
+                    unread_count: data.unread_count, // 실시간 unread_count 반영
+                    member_count: existingRoom.member_count || 0,
+                };
+                updatedRooms.unshift(updatedRoom); // 최신 메시지 있는 방을 맨 위로
+                return [...updatedRooms];
+            });
+        }
+    }, []);
+
+    // 초기 설정 및 WebSocket 연결
     useEffect(() => {
         const token = localStorage.getItem('accessToken');
         const userId = getUserIdFromToken(token);
 
-        const fetchChatRooms = async () => {
-            try {
-                if (!token) throw new Error('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
+        if (!token || !userId) {
+            setError('로그인 정보가 없습니다. 로그인 후 이용해주세요.');
+            setLoading(false);
+            navigate('/login');
+            return;
+        }
 
-                const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-rooms`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
+        fetchChatRooms(token);
 
-                if (!response.ok) throw new Error('채팅방 리스트를 가져오지 못했습니다.');
+        if (!ws && token && userId) {
+            connectWebSocket(userId, token);
+        }
 
-                const result = await response.json();
-                if (result.success_or_fail) {
-                    const rooms = result.data || [];
-                    const updatedRooms = await Promise.all(
-                        rooms.map(async (room) => ({
-                            ...room,
-                            unread_count: await fetchUnreadCount(room.room_id, token),
-                        }))
-                    );
-                    setChatRooms(updatedRooms);
-                } else {
-                    throw new Error(result.message || '채팅방 리스트 로드 실패');
-                }
-            } catch (err) {
-                setError(err.message);
-                if (err.message.includes('로그인')) navigate('/login');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchChatRooms();
-
-        if (!ws && token && userId) connectWebSocket(userId, token);
-
-        const handleMessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log('Received:', data);
-            if (data.type === 'message') {
-                setChatRooms((prevRooms) => {
-                    const updatedRooms = prevRooms.filter((room) => room.room_id !== data.chatRoomId);
-                    const existingRoom = prevRooms.find((room) => room.room_id === data.chatRoomId) || {};
-                    const updatedRoom = {
-                        room_id: data.chatRoomId,
-                        last_message: data.message,
-                        last_message_time: new Date(data.timestamp).toISOString(),
-                        unread_count: data.unread_count, // 서버에서 받은 값 사용
-                        member_count: existingRoom.member_count || 0,
-                    };
-                    updatedRooms.unshift(updatedRoom);
-                    console.log('Updated Rooms:', updatedRooms);
-                    return [...updatedRooms];
-                });
-            }
-        };
-
-        if (wsRef.current) wsRef.current.onmessage = handleMessage;
+        if (wsRef.current) {
+            wsRef.current.onmessage = handleWebSocketMessage;
+        }
 
         return () => {
-            if (wsRef.current) wsRef.current.onmessage = null;
+            if (wsRef.current) {
+                wsRef.current.onmessage = null;
+            }
         };
-    }, [navigate, ws, wsRef, connectWebSocket]);
+    }, [navigate, ws, wsRef, connectWebSocket, handleWebSocketMessage]);
 
+    // 채팅방 클릭 핸들러
     const handleChatRoomClick = (roomId) => {
         navigate(`/chat/${roomId}`);
     };
 
+    // 로딩, 에러, 빈 리스트 처리
     if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;
-    if (error) return <div style={{ color: 'red', textAlign: 'center' }}>오류: {error}</div>;
+    if (error) return <div style={{ color: 'red', textAlign: 'center', padding: '20px' }}>오류: {error}</div>;
     if (chatRooms.length === 0) return <div style={{ textAlign: 'center', padding: '20px' }}>참여 중인 채팅방이 없습니다.</div>;
 
     return (
@@ -161,14 +198,26 @@ function MyChatRoomList() {
                                         <ArrowForwardIosIcon />
                                     </IconButton>
                                 </Badge>
-                                <Typography variant="caption" sx={{ ml: 1 }}>
+                                <Typography variant="caption" sx={{ ml: 1, mr: 2 }}>
                                     참여자: {room.member_count}
                                 </Typography>
+                                <Tooltip title="채팅방 삭제">
+                                    <IconButton
+                                        edge="end"
+                                        aria-label="채팅방 삭제"
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // 리스트 클릭 방지
+                                            handleDeleteChatRoom(room.room_id);
+                                        }}
+                                    >
+                                        <DeleteIcon color="error" />
+                                    </IconButton>
+                                </Tooltip>
                             </ListItemSecondaryAction>
                         </ListItem>
                     ))}
                 </List>
-                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                     <Button
                         variant="contained"
                         color="primary"
@@ -184,6 +233,14 @@ function MyChatRoomList() {
                         }}
                     >
                         홈으로 돌아가기
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => fetchChatRooms(localStorage.getItem('accessToken'))}
+                        sx={{ padding: '10px 20px', textTransform: 'none' }}
+                    >
+                        새로고침
                     </Button>
                 </Box>
             </Box>
