@@ -49,9 +49,7 @@ function ChatRoom() {
     if (!accessToken) return null;
     try {
       const decodedToken = jwtDecode(accessToken);
-      console.log('Decoded Token:', decodedToken);
       const userId = String(decodedToken.sub);
-      console.log('Current User ID:', userId);
       return userId;
     } catch (error) {
       console.error('JWT 디코딩 실패:', error);
@@ -78,14 +76,14 @@ function ChatRoom() {
         const senderId = messageData.sender_id;
         const newMessage = {
           id: messageData.id || messageData._id,
-          room_id: messageData.chat_room_id, // 서버와 일치
+          room_id: messageData.chat_room_id,
           sender: senderId?.toString() === getCurrentUserId() ? '나' : '상대방',
           text: messageData.message,
-          thumbnailImageUrl: messageData.thumbnail_image_url, // 서버 키와 일치
-          originalImageUrl: messageData.original_image_url,   // 서버 키와 일치
+          thumbnailImageUrl: messageData.thumbnail_image_url,
+          originalImageUrl: messageData.original_image_url,
           type: messageData.type || (messageData.original_image_url ? 'IMAGE' : 'TEXT'),
-          time: parseDate(messageData.created_at).toLocaleString(), // 서버 키와 일치
-          unread_count: messageData.unread_count || 0, // 서버 키와 일치
+          time: parseDate(messageData.created_at).toLocaleString(),
+          unread_count: messageData.unread_count || 0,
         };
         console.log('새 메시지 추가:', JSON.stringify(newMessage, null, 2));
         return [...prevMessages, newMessage];
@@ -147,8 +145,8 @@ function ChatRoom() {
             room_id: msg.chat_room_id,
             sender: msg.sender_id?.toString() === getCurrentUserId() ? '나' : '상대방',
             text: msg.message,
-            thumbnailImageUrl: msg.thumbnail_image_url, // 서버 키와 일치
-            originalImageUrl: msg.original_image_url,   // 서버 키와 일치
+            thumbnailImageUrl: msg.thumbnail_image_url,
+            originalImageUrl: msg.original_image_url,
             type: msg.type || (msg.original_image_url ? 'IMAGE' : 'TEXT'),
             time: parseDate(msg.created_at).toLocaleString(),
             unread_count: msg.unread_count || 0,
@@ -187,7 +185,7 @@ function ChatRoom() {
         wsRef.current.close();
       }
     };
-  }, [chatRoomId, receiverId, navigate]);
+  }, [chatRoomId, receiverId, navigate, handleWebSocketMessage]);
 
   const handleFileChange = async (event) => {
     const newFiles = Array.from(event.target.files).filter(file => file.type.startsWith('image/'));
@@ -248,7 +246,44 @@ function ChatRoom() {
     }
   };
 
-  const handleFileRemove = (index) => {
+  // 이미지 삭제 로직 추가
+  const handleFileRemove = async (index) => {
+    const fileToRemove = files[index];
+    if (fileToRemove.imageId) {
+      try {
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) throw new Error('로그인 정보가 없습니다.');
+
+        setUploading(true); // 삭제 중임을 표시
+        const response = await fetch(
+            `${process.env.REACT_APP_API_URL}/chats/${roomId}/image/${fileToRemove.imageId}/cancel`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`이미지 삭제 실패: ${errorText}`);
+        }
+
+        const result = await response.json();
+        if (!result.success_or_fail) {
+          throw new Error(result.message || '이미지 삭제 요청 실패');
+        }
+
+        console.log(`Image ${fileToRemove.imageId} canceled and removed from server`);
+      } catch (err) {
+        setError(`이미지 삭제 실패: ${err.message}`);
+        console.error('Image removal error:', err);
+      } finally {
+        setUploading(false);
+      }
+    }
     setFiles(files.filter((_, i) => i !== index));
   };
 
@@ -385,14 +420,18 @@ function ChatRoom() {
                     <ListItemText
                         primary="나 (미리보기)"
                         secondary={
-                          <div>
+                          <div style={{ position: 'relative' }}>
                             <img
                                 src={URL.createObjectURL(file)}
                                 alt="preview"
                                 style={{ maxWidth: '100px', maxHeight: '100px', cursor: 'pointer' }}
                             />
                             <div style={{ position: 'absolute', bottom: 0, right: 0, background: 'rgba(0, 0, 0, 0.5)' }}>
-                              <IconButton sx={{ color: 'white' }} onClick={() => handleFileRemove(index)}>
+                              <IconButton
+                                  sx={{ color: 'white' }}
+                                  onClick={() => handleFileRemove(index)}
+                                  disabled={uploading}
+                              >
                                 <CloseIcon />
                               </IconButton>
                             </div>
