@@ -67,7 +67,7 @@ function ChatRoom() {
               'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ memberIds: [receiverId] }), // receiverId를 요청 본문에 포함
+            body: JSON.stringify({ member_ids: [receiverId] }), // receiverId를 요청 본문에 포함
           });
 
           if (!createResponse.ok) {
