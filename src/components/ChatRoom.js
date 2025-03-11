@@ -104,24 +104,36 @@ function ChatRoom() {
 
         if (!currentRoomId && receiverId && !hasCreatedRoom.current) {
           hasCreatedRoom.current = true;
+
+          // receiverId를 숫자로 변환
+          const receiverIdNum = Number(receiverId);
+          if (isNaN(receiverIdNum)) {
+            throw new Error('Receiver ID가 유효한 숫자가 아닙니다.');
+          }
+          console.log('Receiver ID:', receiverIdNum); // 디버깅: "13" -> 13
+
+          const requestBody = { member_ids: [receiverIdNum] };
+          console.log('Sending request body:', JSON.stringify(requestBody)); // 디버깅: {"member_ids":[13]}
+
           const createResponse = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-room`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ member_ids: [receiverId] }),
+            body: JSON.stringify(requestBody),
           });
 
-          if (!createResponse.ok) throw new Error('채팅방 개설에 실패했습니다.');
           const createResult = await createResponse.json();
-          if (createResult.success_or_fail) {
-            currentRoomId = createResult.data.room_id;
-            navigate(`/chat/${currentRoomId}`, { replace: true });
-            setRoomId(currentRoomId);
-          } else {
-            throw new Error(createResult.message || '채팅방 개설 실패');
+          console.log('Create room response:', JSON.stringify(createResult, null, 2)); // 응답 확인
+
+          if (!createResponse.ok || !createResult.success_or_fail) {
+            throw new Error(createResult.message || `채팅방 개설 실패: ${createResponse.status}`);
           }
+
+          currentRoomId = createResult.data.room_id;
+          navigate(`/chat/${currentRoomId}`, { replace: true });
+          setRoomId(currentRoomId);
         } else if (!currentRoomId) {
           throw new Error('채팅방 ID 또는 Receiver ID가 필요합니다.');
         } else {
@@ -172,6 +184,7 @@ function ChatRoom() {
         }
       } catch (err) {
         setError(err.message);
+        console.error('Setup error:', err);
         if (err.message.includes('로그인')) navigate('/login');
       } finally {
         setLoading(false);
@@ -246,7 +259,6 @@ function ChatRoom() {
     }
   };
 
-  // 이미지 삭제 로직 추가
   const handleFileRemove = async (index) => {
     const fileToRemove = files[index];
     if (fileToRemove.imageId) {
@@ -254,7 +266,7 @@ function ChatRoom() {
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) throw new Error('로그인 정보가 없습니다.');
 
-        setUploading(true); // 삭제 중임을 표시
+        setUploading(true);
         const response = await fetch(
             `${process.env.REACT_APP_API_URL}/chats/${roomId}/image/${fileToRemove.imageId}/cancel`,
             {
