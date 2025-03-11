@@ -208,7 +208,7 @@ function CreatePortfolio() {
                 // S3에 파일 업로드
                 await axios.put(presignedUrl, file, {
                     headers: {
-                        'Content-Type': file.type || 'application/octet-stream',
+                        'Content-Type': `${file.type}; charset=UTF-8`|| 'application/octet-stream',
                     },
                 });
 

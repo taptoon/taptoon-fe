@@ -234,7 +234,7 @@ function EditPortfolio() {
                 const presignedUrl = presignedResponse.data.data.uploading_image_url;
                 const fileEntityId = presignedResponse.data.data.image_entity_id;
 
-                await axios.put(presignedUrl, file, {headers: {'Content-Type': file.type || 'application/octet-stream'}});
+                await axios.put(presignedUrl, file, {headers: {'Content-Type': `${file.type}; charset=UTF-8` || 'application/octet-stream'}});
 
                 setValidFileIds(prevIds => [...prevIds, fileEntityId]);
                 return {file, entityId: fileEntityId};
