@@ -13,7 +13,7 @@ export function WebSocketProvider({ children }) {
     const connectWebSocket = useCallback((userId, token) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
 
-        const notificationWs = new WebSocket(`${process.env.REACT_APP_WS_URL}/${userId}?token=${token}`);
+        const notificationWs = new WebSocket(`${process.env.REACT_APP_WS_URL}/notifications/${userId}?token=${token}`);
         wsRef.current = notificationWs;
         setWs(notificationWs);
         userIdRef.current = userId;
