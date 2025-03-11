@@ -77,7 +77,7 @@ function DetailedMatchingPost() {
       try {
         setLoading(true);
 
-        // MathingPost 로드
+        // Matching Post 로드
         const postResponse = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`);
         if (!postResponse.ok) throw new Error('게시글 상세 정보를 불러오지 못했습니다.');
         const postResult = await postResponse.json();
@@ -176,7 +176,7 @@ function DetailedMatchingPost() {
         throw new Error('삭제에 실패했습니다.');
       }
 
-      if (response.status === 204) { // noContent
+      if (response.status === 204) {
         setComments(prev =>
             prev
                 .map(comment => ({
@@ -189,6 +189,32 @@ function DetailedMatchingPost() {
     } catch (err) {
       setError(err.message);
       console.error('삭제 오류:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePostDeletion = async () => {
+    if (!window.confirm('정말 게시글을 삭제하시겠습니까?')) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
+      });
+
+      if (!response.ok) {
+        if (handleUnauthorized(response)) return;
+        throw new Error('게시글 삭제에 실패했습니다.');
+      }
+
+      if (response.status === 204) {
+        navigate('/'); // 삭제 후 목록 페이지로 이동 (필요에 따라 수정)
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('게시글 삭제 오류:', err);
     } finally {
       setLoading(false);
     }
@@ -429,7 +455,7 @@ function DetailedMatchingPost() {
                         backgroundColor: theme.palette.red.main,
                         '&:hover': { backgroundColor: '#d32f2f', transform: 'scale(1.05)' },
                       }}
-                      onClick={() => handleCommentDeletion(post.id)}
+                      onClick={handlePostDeletion}
                   >
                     <DeleteIcon sx={{ color: '#fff' }} />
                   </IconButton>
