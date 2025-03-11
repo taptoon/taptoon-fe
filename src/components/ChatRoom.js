@@ -112,8 +112,9 @@ function ChatRoom() {
           }
           console.log('Receiver ID:', receiverIdNum); // 디버깅: "13" -> 13
 
-          const requestBody = { member_ids: [receiverIdNum] };
-          console.log('Sending request body:', JSON.stringify(requestBody)); // 디버깅: {"member_ids":[13]}
+          // member_ids 대신 memberIds로 변경
+          const requestBody = { memberIds: [receiverIdNum] };
+          console.log('Sending request body:', JSON.stringify(requestBody)); // 디버깅: {"memberIds":[13]}
 
           const createResponse = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-room`, {
             method: 'POST',
