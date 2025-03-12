@@ -407,7 +407,7 @@ function DetailedMatchingPost() {
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
           <Card sx={{ boxShadow: 3, borderRadius: 12, mb: 4, position: 'relative' }}>
             <CardHeader
-                title={`${post.title} (by authorId:${post.author_id})`}
+                title={`(postId=${post.matching_post_id}) ${post.title} ⬅️ 👤 ✍️ By ${post.author_name}(${post.author_id})`}
                 subheader={`${post.artist_type}, ${post.work_type}`}
                 sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}
             />

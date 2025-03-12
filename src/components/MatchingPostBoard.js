@@ -327,7 +327,7 @@ function MatchingPostBoard() {
                       cursor: 'pointer'
                     }}>
                       <CardHeader
-                          title={`${post.title}(id=${post.matching_post_id})`}
+                          title={`(postId=${post.matching_post_id}) ${post.title} ⬅️ 👤 ✍️ By ${post.author_name}`}
                           subheader={`${post.artist_type}, ${post.work_type}`}
                           sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}
                           action={
