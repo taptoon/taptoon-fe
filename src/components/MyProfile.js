@@ -56,7 +56,7 @@ function MyProfile() {
 
                 // 2. 포트폴리오 리스트 API 호출 (사용자 ID로 포트폴리오 조회)
                 const memberId = userResponse.data.data.id;
-                const portfoliosResponse = await axios.get(`${process.env.REACT_APP_API_URL}/portfolios`, {
+                const portfoliosResponse = await axios.get(`${process.env.REACT_APP_API_URL}/portfolios?memberId=${encodeURIComponent(memberId)}`, {
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
                         'Content-Type': 'application/json',
