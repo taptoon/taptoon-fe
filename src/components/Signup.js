@@ -14,7 +14,7 @@ function SignupPage() {
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isEmailChecked, setIsEmailChecked] = useState(false);
-    const [isEmailDuplicated, setIsEmailDuplicated] = useState(true);
+    const [isEmailAvailable, setIsEmailAvailable] = useState(false); // true: 사용 가능, false: 중복
     const navigate = useNavigate();
 
     // 이메일 유효성 검사 정규식
@@ -46,12 +46,12 @@ function SignupPage() {
                 return;
             }
 
-            setIsEmailDuplicated(data.data);
+            // 백엔드의 isEmailAvailable(true = 사용 가능)을 그대로 사용
+            setIsEmailAvailable(data.data); // true: 사용 가능, false: 중복
             setIsEmailChecked(true);
-            if (!data.data) {
-                alert('이메일이 사용 가능합니다!'); // 중복이 아닌 경우 알림
-            }
-            setError(data.data ? '이미 사용 중인 이메일입니다.' : '');
+            // 성공이든 실패든 alert 표시
+            alert(data.data ? '사용 가능합니다!' : '이미 사용 중인 이메일입니다.');
+            setError(data.data ? '' : '이미 사용 중인 이메일입니다.');
         } catch (err) {
             setError('이메일 중복 체크 중 오류가 발생했습니다: ' + (err.message || '네트워크 문제'));
         }
@@ -59,7 +59,7 @@ function SignupPage() {
 
     useEffect(() => {
         setIsEmailChecked(false);
-        setIsEmailDuplicated(true);
+        setIsEmailAvailable(false); // 이메일 변경 시 사용 불가능으로 초기화
         setError('');
     }, [email]);
 
@@ -82,7 +82,7 @@ function SignupPage() {
             return;
         }
 
-        if (isEmailDuplicated) {
+        if (!isEmailAvailable) {
             setError('이미 사용 중인 이메일입니다. 다른 이메일을 사용해주세요.');
             return;
         }
@@ -145,11 +145,11 @@ function SignupPage() {
                     />
                     <Button
                         variant="contained"
-                        color="warning" // 주황색
+                        color="warning"
                         onClick={checkEmailDuplication}
                         sx={{ mt: 2, height: '56px' }}
-                        startIcon={<CheckCircle />} // 중복 체크 아이콘
-                        disabled={!emailRegex.test(email)} // 이메일 양식 불일치 시 비활성화
+                        startIcon={<CheckCircle />}
+                        disabled={!emailRegex.test(email)}
                     >
                         중복 체크
                     </Button>
@@ -180,9 +180,9 @@ function SignupPage() {
                 <Button
                     type="submit"
                     variant="contained"
-                    sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }} // 초록색
-                    disabled={!isEmailChecked || isEmailDuplicated}
-                    startIcon={<PersonAdd />} // 회원가입 아이콘
+                    sx={{ mt: 2, backgroundColor: '#4CAF50', '&:hover': { backgroundColor: '#45a049' } }}
+                    disabled={!isEmailChecked || !isEmailAvailable} // 사용 가능해야 버튼 활성화
+                    startIcon={<PersonAdd />}
                 >
                     회원가입
                 </Button>
