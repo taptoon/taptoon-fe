@@ -364,10 +364,8 @@ function DetailedMatchingPost() {
   const loadReplies = useCallback(async (commentId) => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/replies/${commentId}`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
-      });
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/replies/${commentId}`);
+
       if (!response.ok) throw new Error('답글 목록을 불러오지 못했습니다.');
       const result = await response.json();
       if (result.success_or_fail) {
