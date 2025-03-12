@@ -35,10 +35,9 @@ function SignupPage() {
         }
 
         try {
-            const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/check-email-duplicated`, { // 경로 수정
-                method: 'PATCH',
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/auth/emails/availability?email=${encodeURIComponent(email)}`, {
+                method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
             });
             const data = await response.json();
 
@@ -49,6 +48,9 @@ function SignupPage() {
 
             setIsEmailDuplicated(data.data);
             setIsEmailChecked(true);
+            if (!data.data) {
+                alert('이메일이 사용 가능합니다!'); // 중복이 아닌 경우 알림
+            }
             setError(data.data ? '이미 사용 중인 이메일입니다.' : '');
         } catch (err) {
             setError('이메일 중복 체크 중 오류가 발생했습니다: ' + (err.message || '네트워크 문제'));
