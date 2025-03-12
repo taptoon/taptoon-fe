@@ -123,8 +123,7 @@ function MyProfile() {
                 return; // 에러 후 리다이렉션 후 함수 종료
             }
         } finally {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
+            ['userId', 'accessToken', 'refreshToken'].forEach(item => localStorage.removeItem(item));
             navigate('/');
         }
     };
