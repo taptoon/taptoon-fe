@@ -84,11 +84,7 @@ function MatchingPostBoard() {
               return;
             }
             try {
-              const response = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/autocomplete`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ keyword: searchTerm }),
-              });
+              const response = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/autocomplete?keyword=${encodeURIComponent(searchTerm)}`);
               if (!response.ok) throw new Error('자동 완성 데이터를 불러오지 못했습니다.');
               const result = await response.json();
               if (result.success_or_fail) {
