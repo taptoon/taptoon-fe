@@ -133,6 +133,7 @@ function DetailedMatchingPost() {
 
   const handleUnauthorized = (response) => {
     if (response.status === 401) {
+      ['userId', 'accessToken', 'refreshToken'].forEach(item => localStorage.removeItem(item));
       navigate('/login');
       return true;
     }
@@ -159,6 +160,16 @@ function DetailedMatchingPost() {
     }
 
     navigate(`/chat?receiverId=${receiverId}`);
+  };
+
+  const handlePortfolioClick = () => {
+    console.log('Portfolio button clicked'); // 디버깅 로그
+    const authorId = post?.author_id;
+    if (!authorId) {
+      setError('작성자 ID를 가져오지 못했습니다.');
+      return;
+    }
+    navigate(`/portfolio-list?authorId=${authorId}`);
   };
 
   const handleCommentDeletion = async (commentId) => {
@@ -407,7 +418,7 @@ function DetailedMatchingPost() {
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
           <Card sx={{ boxShadow: 3, borderRadius: 12, mb: 4, position: 'relative' }}>
             <CardHeader
-                title={`(postId=${post.matching_post_id}) ${post.title} ⬅️ 👤 ✍️ By ${post.author_name}(${post.author_id})`}
+                title={`${post.title} ⬅️ 👤 ✍️ By ${post.author_name}(${post.author_id})`}
                 subheader={`${post.artist_type}, ${post.work_type}`}
                 sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}
             />
@@ -727,6 +738,52 @@ function DetailedMatchingPost() {
                 <ChatIcon sx={{ color: '#fff' }} />
               </Fab>
           )}
+
+          <Fab
+              color="purple"
+              aria-label="portfolio"
+              sx={{
+                position: 'fixed',
+                bottom: 80,
+                right: 16,
+                backgroundColor: theme.palette.purple.main,
+                '&:hover': { backgroundColor: '#7B1FA2', transform: 'scale(1.05)' },
+                borderRadius: '50%',
+                zIndex: 1000,
+              }}
+              onClick={handlePortfolioClick}
+          >
+            <span role="img" aria-label="portfolio">🎨🖌️</span>
+          </Fab>
+
+          {/* Balloon Tip */}
+          <Box
+              sx={{
+                position: 'fixed',
+                bottom: 140,
+                right: 60,
+                backgroundColor: '#fff',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                fontSize: '0.875rem',
+                color: '#333',
+                zIndex: 999,
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: '-6px',
+                  right: '10px',
+                  width: '0',
+                  height: '0',
+                  borderLeft: '6px solid transparent',
+                  borderRight: '6px solid transparent',
+                  borderTop: '6px solid #fff',
+                },
+              }}
+          >
+            '{post?.author_name}'님의 포트폴리오 보러 가기
+          </Box>
         </div>
       </ThemeProvider>
   );
