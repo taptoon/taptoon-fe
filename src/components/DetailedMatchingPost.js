@@ -165,11 +165,12 @@ function DetailedMatchingPost() {
   const handlePortfolioClick = () => {
     console.log('Portfolio button clicked'); // 디버깅 로그
     const authorId = post?.author_id;
+    const authorName = post?.author_name;
     if (!authorId) {
       setError('작성자 ID를 가져오지 못했습니다.');
       return;
     }
-    navigate(`/portfolio-list?authorId=${authorId}`);
+    navigate(`/portfolio-list?authorId=${authorId}&authorName=${authorName}`);
   };
 
   const handleCommentDeletion = async (commentId) => {

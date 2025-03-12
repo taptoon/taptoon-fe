@@ -2,107 +2,87 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography, List, ListItem, ListItemText, Fab } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
-import axios from 'axios';
-
-// 넷플릭스 글씨체를 시뮬레이션하기 위해 Google Fonts에서 Bebas Neue 사용
 import 'typeface-bebas-neue';
+
+// 상수 정의
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+const MAX_CONTENT_LENGTH = 50;
+const ERROR_MESSAGES = {
+    NO_MEMBER_ID: '작성자 ID가 제공되지 않았습니다.',
+    FETCH_FAILED: '포트폴리오 데이터를 불러오지 못했습니다.',
+};
 
 function PortfolioList() {
     const [portfolios, setPortfolios] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-    const location = useLocation();
+    const { search } = useLocation();
 
-    // URL 쿼리 파라미터에서 memberId 추출
-    const searchParams = new URLSearchParams(location.search);
-    const memberId = searchParams.get('authorId'); // DetailedMatchingPost에서 전달된 authorId
+    // URL 쿼리 파라미터에서 추출
+    const memberId = new URLSearchParams(search).get('authorId');
+    const memberName = new URLSearchParams(search).get('authorName');
 
     // 포트폴리오 리스트 API 호출
     useEffect(() => {
         const fetchPortfolios = async () => {
             try {
-                if (!memberId) {
-                    throw new Error('작성자 ID가 제공되지 않았습니다.');
-                }
+                if (!memberId) throw new Error(ERROR_MESSAGES.NO_MEMBER_ID);
 
                 setLoading(true);
-                const accessToken = localStorage.getItem('accessToken');
-                if (!accessToken) {
-                    navigate('/login');
-                    return;
-                }
+                const response = await fetch(`${API_BASE_URL}/portfolios?memberId=${encodeURIComponent(memberId)}`);
 
-                // 포트폴리오 리스트 API 호출
-                const response = await axios.get(`${process.env.REACT_APP_API_URL}/portfolios?memberId=${encodeURIComponent(memberId)}`, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
+                if (response.status === 401) handleUnauthorized();
+                if (!response.ok) throw new Error(ERROR_MESSAGES.FETCH_FAILED);
 
-                if (response.status === 401) {
-                    navigate('/login');
-                    return;
-                }
+                const result = await response.json();
 
-                if (response.data.success_or_fail) {
-                    setPortfolios(response.data.data || []);
-                } else if (response.status === 404) {
-                    setPortfolios([]);
+                if (result.success_or_fail) {
+                    setPortfolios(result.data || []);
                 } else {
-                    throw new Error(response.data.message || '포트폴리오 로드 실패');
+                    setPortfolios([]);
+                    setError(result.message || '포트폴리오 로드 실패');
                 }
             } catch (err) {
                 setError(err.message);
-                if (err.response?.status === 401) {
-                    navigate('/login');
-                    return;
-                }
+                if (err.response?.status === 401) handleUnauthorized();
             } finally {
                 setLoading(false);
             }
         };
 
         fetchPortfolios();
-    }, [memberId, navigate]);
+    }, [memberId]);
+
+    // 인증 실패 처리
+    const handleUnauthorized = () => {
+        ['userId', 'accessToken', 'refreshToken'].forEach(item => localStorage.removeItem(item));
+        navigate('/login');
+    };
 
     // 포트폴리오 상세 페이지로 이동
     const handleViewPortfolioDetails = (portfolio) => {
         navigate(`/portfolios/${portfolio.portfolio_id}`, { state: { portfolio } });
     };
 
-    // 본문 내용 자르기 (50자 이상이면 ... 추가)
-    const truncateContent = (content, maxLength = 50) => {
-        if (content.length > maxLength) {
-            return content.slice(0, maxLength) + '...';
-        }
-        return content;
-    };
+    // 본문 내용 자르기
+    const truncateContent = (content) => content.length > MAX_CONTENT_LENGTH ? `${content.slice(0, MAX_CONTENT_LENGTH)}...` : content;
 
-    if (loading) return <div style={{ textAlign: 'center', padding: '20px', color: '#1976d2' }}>로딩 중...</div>;
-    if (error) return <div style={{ color: 'red', textAlign: 'center' }}>오류: {error}</div>;
+    if (loading) return <Box sx={{ textAlign: 'center', p: 2, color: '#1976d2' }}>로딩 중...</Box>;
+    if (error) return <Box sx={{ color: 'red', textAlign: 'center' }}>오류: {error}</Box>;
 
     return (
-        <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
-            <Typography variant="h4" gutterBottom>포트폴리오 목록</Typography>
+        <Box sx={{ p: 2, maxWidth: 800, mx: 'auto', position: 'relative' }}>
+            <Typography
+                variant="h5"
+                gutterBottom
+                sx={{ fontFamily: 'Bebas Neue, Arial, sans-serif', fontSize: '24px', color: '#4fd751', display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+                <FolderIcon sx={{ color: '#44e15e' }} /> '{memberName}'님의 포트폴리오 목록
+            </Typography>
 
             {/* 포트폴리오 리스트 섹션 */}
-            <Box sx={{ mt: 4, p: 2, backgroundColor: '#fff', borderRadius: 2, boxShadow: 1 }}>
-                <Typography
-                    variant="h5"
-                    gutterBottom
-                    sx={{
-                        fontFamily: 'Bebas Neue, Arial, sans-serif', // 넷플릭스 스타일 시뮬레이션
-                        fontSize: '24px',
-                        color: '#e50914', // 넷플릭스 레드 컬러
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                    }}
-                >
-                    <FolderIcon sx={{ color: '#e50914' }} /> 작성자의 포트폴리오 목록
-                </Typography>
+            <Box sx={{ mt: 4, p: 2, bgcolor: '#fff', borderRadius: 2, boxShadow: 1 }}>
                 <List>
                     {portfolios.length === 0 ? (
                         <Typography sx={{ textAlign: 'center', color: '#666', mt: 2 }}>
@@ -115,35 +95,22 @@ function PortfolioList() {
                                 onClick={() => handleViewPortfolioDetails(portfolio)}
                                 sx={{
                                     borderBottom: '1px solid #e0e0e0',
-                                    padding: 2,
+                                    p: 2,
                                     cursor: 'pointer',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'flex-end',
                                     minHeight: 120,
-                                    '&:hover': {
-                                        backgroundColor: '#f5f5f5',
-                                    },
+                                    '&:hover': { bgcolor: '#f5f5f5' },
                                 }}
                             >
                                 <ListItemText
                                     primary={`포트폴리오 제목: ${portfolio.title || '제목 없음'}`}
-                                    secondary={
-                                        <>
-                                            설명: {truncateContent(portfolio.content || '설명 없음')} | 생성일: {new Date(portfolio.created_at).toLocaleString()}
-                                        </>
-                                    }
+                                    secondary={`설명: ${truncateContent(portfolio.content || '설명 없음')} | 생성일: ${new Date(portfolio.created_at).toLocaleString()}`}
                                     sx={{ maxWidth: '70%' }}
                                 />
-                                {/* 파일 타입이 이미지일 경우 원형 이미지 배열 */}
-                                {portfolio.file_list && portfolio.file_list.some(file => file.file_type === 'IMAGE') && (
-                                    <Box sx={{
-                                        position: 'absolute',
-                                        top: 8,
-                                        right: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                    }}>
+                                {portfolio.file_list?.some(file => file.file_type === 'IMAGE') && (
+                                    <Box sx={{ position: 'absolute', top: 8, right: 0, display: 'flex', alignItems: 'center' }}>
                                         {portfolio.file_list
                                             .filter(file => file.file_type === 'IMAGE')
                                             .map((file, index) => (
@@ -157,8 +124,8 @@ function PortfolioList() {
                                                         height: 36,
                                                         borderRadius: '50%',
                                                         objectFit: 'cover',
-                                                        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                                                        marginLeft: index > 0 ? '-6px' : 0,
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                                        ml: index > 0 ? -0.75 : 0,
                                                         border: '2px solid #fff',
                                                     }}
                                                     onError={(e) => { e.target.src = 'https://picsum.photos/36/36?text=Error'; }}
@@ -173,40 +140,29 @@ function PortfolioList() {
             </Box>
 
             {/* 뒤로 가기 버튼 */}
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                <Fab
-                    color="primary"
-                    aria-label="back"
-                    onClick={() => navigate(-1)}
-                    sx={{
-                        position: 'fixed',
-                        bottom: 20,
-                        right: 20,
-                        backgroundColor: '#1976d2',
-                        '&:hover': { backgroundColor: '#1565c0', transform: 'scale(1.1)' },
-                        borderRadius: '50%',
-                        width: 60,
-                        height: 60,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                        zIndex: 1000,
-                        animation: 'pulse 2s infinite',
-                    }}
-                >
-                    <span role="img" aria-label="back">⬅️</span>
-                </Fab>
-            </Box>
+            <Fab
+                color="primary"
+                aria-label="back"
+                onClick={() => navigate(-1)}
+                sx={{
+                    position: 'fixed',
+                    bottom: 20,
+                    right: 20,
+                    bgcolor: '#bde8b7',
+                    '&:hover': { bgcolor: '#1565c0', transform: 'scale(1.1)' },
+                    borderRadius: '50%',
+                    width: 60,
+                    height: 60,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                    zIndex: 1000,
+                    animation: 'pulse 2s infinite',
+                }}
+            >
+                <span role="img" aria-label="back" style={{ fontSize: '35px' }}>⬅</span>
+            </Fab>
 
-            {/* 애니메이션 스타일 */}
-            <style>
-                {`
-          @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-            100% { transform: scale(1); }
-          }
-        `}
-            </style>
-        </div>
+            <style>{`@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }`}</style>
+        </Box>
     );
 }
 
