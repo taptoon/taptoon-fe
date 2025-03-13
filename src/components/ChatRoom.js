@@ -67,23 +67,36 @@ function ChatRoom() {
     try {
       const messageData = JSON.parse(event.data);
       console.log('WebSocket 메시지 수신:', JSON.stringify(messageData, null, 2));
+
+      if (messageData.type === 'CHAT_ROOM_DELETED') {
+        console.log('채팅방 삭제 알림 수신 - chatRoomId:', messageData.chatRoomId);
+        if (messageData.chatRoomId === roomId) {
+          setError('이 채팅방이 삭제되었습니다.');
+          setTimeout(() => navigate('/chat-list'), 100); // 2초 후 채팅 목록으로 이동
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.close();
+          }
+        }
+        return;
+      }
+
       setMessages((prevMessages) => {
         const exists = prevMessages.some((m) => m.id === (messageData.id || messageData._id));
         if (exists) {
           console.log('중복 메시지 필터링됨:', messageData.id || messageData._id);
           return prevMessages;
         }
-        const senderId = messageData.sender_id;
+        const senderId = messageData.sender_id || messageData.senderId;
         const newMessage = {
           id: messageData.id || messageData._id,
-          room_id: messageData.chat_room_id,
+          room_id: messageData.chat_room_id || messageData.chatRoomId,
           sender: senderId?.toString() === getCurrentUserId() ? '나' : '상대방',
           text: messageData.message,
-          thumbnailImageUrl: messageData.thumbnail_image_url,
-          originalImageUrl: messageData.original_image_url,
-          type: messageData.type || (messageData.original_image_url ? 'IMAGE' : 'TEXT'),
-          time: parseDate(messageData.created_at).toLocaleString(),
-          unread_count: messageData.unread_count || 0,
+          thumbnailImageUrl: messageData.thumbnail_image_url || messageData.thumbnailImageUrl,
+          originalImageUrl: messageData.original_image_url || messageData.originalImageUrl,
+          type: messageData.type || (messageData.original_image_url || messageData.originalImageUrl ? 'IMAGE' : 'TEXT'),
+          time: parseDate(messageData.created_at || messageData.createdAt).toLocaleString(),
+          unread_count: messageData.unread_count || messageData.unreadCount || 0,
         };
         console.log('새 메시지 추가:', JSON.stringify(newMessage, null, 2));
         return [...prevMessages, newMessage];
@@ -92,7 +105,7 @@ function ChatRoom() {
       console.error('WebSocket 메시지 파싱 실패:', err);
       setError('유효하지 않은 채팅 데이터 수신');
     }
-  }, []);
+  }, [roomId, navigate]);
 
   useEffect(() => {
     const setupChatRoom = async () => {
@@ -105,16 +118,14 @@ function ChatRoom() {
         if (!currentRoomId && receiverId && !hasCreatedRoom.current) {
           hasCreatedRoom.current = true;
 
-          // receiverId를 숫자로 변환
           const receiverIdNum = Number(receiverId);
           if (isNaN(receiverIdNum)) {
             throw new Error('Receiver ID가 유효한 숫자가 아닙니다.');
           }
-          console.log('Receiver ID:', receiverIdNum); // 디버깅: "13" -> 13
+          console.log('Receiver ID:', receiverIdNum);
 
-          // member_ids 대신 memberIds로 변경
           const requestBody = { member_ids: [receiverIdNum] };
-          console.log('Sending request body:', JSON.stringify(requestBody)); // 디버깅: {"memberIds":[13]}
+          console.log('Sending request body:', JSON.stringify(requestBody));
 
           const createResponse = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-room`, {
             method: 'POST',
@@ -126,7 +137,7 @@ function ChatRoom() {
           });
 
           const createResult = await createResponse.json();
-          console.log('Create room response:', JSON.stringify(createResult, null, 2)); // 응답 확인
+          console.log('Create room response:', JSON.stringify(createResult, null, 2));
 
           if (!createResponse.ok || !createResult.success_or_fail) {
             throw new Error(createResult.message || `채팅방 개설 실패: ${createResponse.status}`);
@@ -181,6 +192,10 @@ function ChatRoom() {
           };
           wsRef.current.onclose = (event) => {
             console.log('WebSocket 연결 종료:', event.code, event.reason);
+            if (event.reason === 'Chat room deleted') {
+              setError('이 채팅방이 삭제되었습니다.');
+              setTimeout(() => navigate('/chat-list'), 100);
+            }
           };
         }
       } catch (err) {
@@ -313,8 +328,15 @@ function ChatRoom() {
       return;
     }
 
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setError('WebSocket 연결이 끊어졌습니다. 새로고침 후 다시 시도해주세요.');
+      return;
+    }
+
     try {
       setUploading(true);
+
+      // 이미지 메시지 전송 (기존 API 유지)
       if (files.length > 0) {
         const imageIds = files.map(f => f.imageId).filter(id => id != null);
         if (imageIds.length === 0) {
@@ -340,20 +362,18 @@ function ChatRoom() {
         setFiles([]);
       }
 
+      // 텍스트 메시지 WebSocket으로 전송
       if (message.trim()) {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/${roomId}/message`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ message: message }),
-        });
-        if (!response.ok) throw new Error('메시지 전송에 실패했습니다.');
-        const result = await response.json();
-        console.log('Text Send Response:', JSON.stringify(result, null, 2));
-        if (!result.success_or_fail) throw new Error(result.message || '메시지 전송 실패');
-        setMessage('');
+        const senderId = getCurrentUserId();
+        if (!senderId) throw new Error('사용자 ID를 가져올 수 없습니다.');
+
+        const messagePayload = {
+          senderId: Number(senderId), // 서버에서 Long 타입으로 기대하므로 Number로 변환
+          message: message.trim(),
+        };
+        console.log('Sending WebSocket message:', JSON.stringify(messagePayload));
+        wsRef.current.send(JSON.stringify(messagePayload));
+        setMessage(''); // 메시지 입력창 초기화
       }
     } catch (err) {
       setError(err.message);
