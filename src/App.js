@@ -14,6 +14,7 @@ import DetailedPortfolio from "./components/DetailedPortfolio";
 import EditPortfolio from "./components/EditPortfolio"; // 새로 추가
 import {WebSocketProvider} from "./WebSocketContext"; // 새로 추가
 import {AuthProvider, useAuth} from './AuthContext';
+import PortfolioList from "./components/PortfolioList";
 
 function App() {
     const {isAuthenticated} = useAuth();
@@ -49,7 +50,8 @@ function App() {
                         <Route path="/portfolios/:portfolioId/edit" element={<EditPortfolio />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<SignupPage />} />
-                        <Route path="*" element={<Login />} />
+                        <Route path="/portfolio-list" element={<PortfolioList />} />
+                        <Route path="*" element={<MatchingPostBoard />} />
                     </Routes>
                 </div>
             </WebSocketProvider>

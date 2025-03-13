@@ -124,20 +124,20 @@ function EditMatchingPost() {
         }
     };
 
-    const handleExistingImageRemove = async (imageUrl, imageIndex) => {
+    const handleExistingImageRemove = (imageUrl, imageIndex) => {
         setUploading(true);
         setUploadError(null);
 
         try {
             const imageId = existingImages[imageIndex].id;
-            await axios.delete(`${process.env.REACT_APP_API_URL}/matching-posts/images/${imageId}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
-            });
 
-            setDeletedImageIds(prev => [...prev, imageId]);
-            setExistingImages(prev => prev.filter((_, i) => i !== imageIndex));
+            // API 호출 대신 deletedImageIds에 imageId 추가
+            setDeletedImageIds((prev) => [...prev, imageId]);
+
+            // existingImages에서 해당 인덱스의 이미지 제거
+            setExistingImages((prev) => prev.filter((_, i) => i !== imageIndex));
         } catch (err) {
-            setUploadError('기존 이미지 삭제 실패: ' + (err.response?.data?.message || err.message));
+            setUploadError('기존 이미지 삭제 처리 중 오류 발생: ' + err.message);
         } finally {
             setUploading(false);
         }

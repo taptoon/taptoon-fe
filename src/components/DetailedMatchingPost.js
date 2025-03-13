@@ -77,7 +77,7 @@ function DetailedMatchingPost() {
       try {
         setLoading(true);
 
-        // MathingPost 로드
+        // Matching Post 로드
         const postResponse = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`);
         if (!postResponse.ok) throw new Error('게시글 상세 정보를 불러오지 못했습니다.');
         const postResult = await postResponse.json();
@@ -133,6 +133,7 @@ function DetailedMatchingPost() {
 
   const handleUnauthorized = (response) => {
     if (response.status === 401) {
+      ['userId', 'accessToken', 'refreshToken'].forEach(item => localStorage.removeItem(item));
       navigate('/login');
       return true;
     }
@@ -161,6 +162,17 @@ function DetailedMatchingPost() {
     navigate(`/chat?receiverId=${receiverId}`);
   };
 
+  const handlePortfolioClick = () => {
+    console.log('Portfolio button clicked'); // 디버깅 로그
+    const authorId = post?.author_id;
+    const authorName = post?.author_name;
+    if (!authorId) {
+      setError('작성자 ID를 가져오지 못했습니다.');
+      return;
+    }
+    navigate(`/portfolio-list?authorId=${authorId}&authorName=${authorName}`);
+  };
+
   const handleCommentDeletion = async (commentId) => {
     if (!window.confirm('정말 삭제하시겠습니까?')) return;
 
@@ -176,7 +188,7 @@ function DetailedMatchingPost() {
         throw new Error('삭제에 실패했습니다.');
       }
 
-      if (response.status === 204) { // noContent
+      if (response.status === 204) {
         setComments(prev =>
             prev
                 .map(comment => ({
@@ -189,6 +201,32 @@ function DetailedMatchingPost() {
     } catch (err) {
       setError(err.message);
       console.error('삭제 오류:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePostDeletion = async () => {
+    if (!window.confirm('정말 게시글을 삭제하시겠습니까?')) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/matching-posts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
+      });
+
+      if (!response.ok) {
+        if (handleUnauthorized(response)) return;
+        throw new Error('게시글 삭제에 실패했습니다.');
+      }
+
+      if (response.status === 204) {
+        navigate('/'); // 삭제 후 목록 페이지로 이동 (필요에 따라 수정)
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('게시글 삭제 오류:', err);
     } finally {
       setLoading(false);
     }
@@ -326,10 +364,8 @@ function DetailedMatchingPost() {
   const loadReplies = useCallback(async (commentId) => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/replies/${commentId}`, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}` },
-      });
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/comments/replies/${commentId}`);
+
       if (!response.ok) throw new Error('답글 목록을 불러오지 못했습니다.');
       const result = await response.json();
       if (result.success_or_fail) {
@@ -381,7 +417,7 @@ function DetailedMatchingPost() {
         <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
           <Card sx={{ boxShadow: 3, borderRadius: 12, mb: 4, position: 'relative' }}>
             <CardHeader
-                title={`${post.title} (by authorId:${post.author_id})`}
+                title={`${post.title} ⬅️ 👤 ✍️ By ${post.author_name}(${post.author_id})`}
                 subheader={`${post.artist_type}, ${post.work_type}`}
                 sx={{ backgroundColor: '#f5f5f5', borderBottom: '1px solid #e0e0e0', padding: 2 }}
             />
@@ -429,7 +465,7 @@ function DetailedMatchingPost() {
                         backgroundColor: theme.palette.red.main,
                         '&:hover': { backgroundColor: '#d32f2f', transform: 'scale(1.05)' },
                       }}
-                      onClick={() => handleCommentDeletion(post.id)}
+                      onClick={handlePostDeletion}
                   >
                     <DeleteIcon sx={{ color: '#fff' }} />
                   </IconButton>
@@ -701,6 +737,52 @@ function DetailedMatchingPost() {
                 <ChatIcon sx={{ color: '#fff' }} />
               </Fab>
           )}
+
+          <Fab
+              color="purple"
+              aria-label="portfolio"
+              sx={{
+                position: 'fixed',
+                bottom: 80,
+                right: 16,
+                backgroundColor: theme.palette.purple.main,
+                '&:hover': { backgroundColor: '#7B1FA2', transform: 'scale(1.05)' },
+                borderRadius: '50%',
+                zIndex: 1000,
+              }}
+              onClick={handlePortfolioClick}
+          >
+            <span role="img" aria-label="portfolio">🎨🖌️</span>
+          </Fab>
+
+          {/* Balloon Tip */}
+          <Box
+              sx={{
+                position: 'fixed',
+                bottom: 140,
+                right: 60,
+                backgroundColor: '#fff',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+                fontSize: '0.875rem',
+                color: '#333',
+                zIndex: 999,
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: '-6px',
+                  right: '10px',
+                  width: '0',
+                  height: '0',
+                  borderLeft: '6px solid transparent',
+                  borderRight: '6px solid transparent',
+                  borderTop: '6px solid #fff',
+                },
+              }}
+          >
+            '{post?.author_name}'님의 포트폴리오 보러 가기
+          </Box>
         </div>
       </ThemeProvider>
   );

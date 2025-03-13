@@ -37,7 +37,9 @@ function CreateMatchingPost() {
   useEffect(() => {
     const checkAuthAndFetchPostId = async () => {
       const accessToken = localStorage.getItem('accessToken');
+
       if (!accessToken) {
+        ['userId', 'accessToken', 'refreshToken'].forEach(item => localStorage.removeItem(item));
         navigate('/login');
         return;
       }
@@ -50,6 +52,11 @@ function CreateMatchingPost() {
           },
         });
 
+        // 401 에러 처리: accessToken 만료 시 로그인 페이지로 리다이렉션
+        if (response.status === 401) {
+          handleUnauthorized();
+        }
+
         if (response.data.success_or_fail) {
           setMatchingPostId(response.data.data); // 반환된 ID 저장
         } else {
@@ -57,6 +64,7 @@ function CreateMatchingPost() {
         }
       } catch (err) {
         setUploadError('매칭 포스트 생성 중 오류가 발생했습니다: ' + err.message);
+        handleUnauthorized();
       }
     };
 
@@ -70,6 +78,12 @@ function CreateMatchingPost() {
       alert(`이미지는 최대 ${MAX_FILES}장까지 업로드할 수 있습니다.`);
     }
   };
+
+  const handleUnauthorized = () => {
+    ['userId', 'accessToken', 'refreshToken'].forEach(item => localStorage.removeItem(item));
+    navigate('/login');
+    return;
+  }
 
   // 파일/이미지 선택 핸들러 (Presigned URL 받아서 S3 업로드)
   const handleFileChange = async (event) => {
@@ -147,8 +161,7 @@ function CreateMatchingPost() {
 
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
-      navigate('/login');
-      return;
+      handleUnauthorized();
     }
 
     setUploading(true);
