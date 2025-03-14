@@ -67,13 +67,23 @@ function ChatRoom() {
     try {
       const messageData = JSON.parse(event.data);
       console.log('WebSocket 메시지 수신:', JSON.stringify(messageData, null, 2));
+
+      // 삭제된 메시지 필터링
+      if (messageData.status === 'DELETED' || messageData.is_deleted) {
+        console.log('삭제된 메시지 필터링 - id:', messageData.id);
+        setMessages((prevMessages) =>
+            prevMessages.filter((msg) => msg.id !== messageData.id)
+        );
+        return;
+      }
+
       setMessages((prevMessages) => {
         const exists = prevMessages.some((m) => m.id === (messageData.id || messageData._id));
         if (exists) {
           console.log('중복 메시지 필터링됨:', messageData.id || messageData._id);
           return prevMessages;
         }
-        const senderId = messageData.sender_id;
+        const senderId = messageData.sender_id || messageData.senderId;
         const newMessage = {
           id: messageData.id || messageData._id,
           room_id: messageData.chat_room_id,
@@ -84,6 +94,8 @@ function ChatRoom() {
           type: messageData.type || (messageData.original_image_url ? 'IMAGE' : 'TEXT'),
           time: parseDate(messageData.created_at).toLocaleString(),
           unread_count: messageData.unread_count || 0,
+          status: messageData.status,
+          is_deleted: messageData.is_deleted || false,
         };
         console.log('새 메시지 추가:', JSON.stringify(newMessage, null, 2));
         return [...prevMessages, newMessage];
@@ -105,16 +117,14 @@ function ChatRoom() {
         if (!currentRoomId && receiverId && !hasCreatedRoom.current) {
           hasCreatedRoom.current = true;
 
-          // receiverId를 숫자로 변환
           const receiverIdNum = Number(receiverId);
           if (isNaN(receiverIdNum)) {
             throw new Error('Receiver ID가 유효한 숫자가 아닙니다.');
           }
-          console.log('Receiver ID:', receiverIdNum); // 디버깅: "13" -> 13
+          console.log('Receiver ID:', receiverIdNum);
 
-          // member_ids 대신 memberIds로 변경
           const requestBody = { member_ids: [receiverIdNum] };
-          console.log('Sending request body:', JSON.stringify(requestBody)); // 디버깅: {"memberIds":[13]}
+          console.log('Sending request body:', JSON.stringify(requestBody));
 
           const createResponse = await fetch(`${process.env.REACT_APP_API_URL}/chats/chat-room`, {
             method: 'POST',
@@ -126,7 +136,7 @@ function ChatRoom() {
           });
 
           const createResult = await createResponse.json();
-          console.log('Create room response:', JSON.stringify(createResult, null, 2)); // 응답 확인
+          console.log('Create room response:', JSON.stringify(createResult, null, 2));
 
           if (!createResponse.ok || !createResult.success_or_fail) {
             throw new Error(createResult.message || `채팅방 개설 실패: ${createResponse.status}`);
@@ -153,17 +163,21 @@ function ChatRoom() {
         const messagesResult = await messagesResponse.json();
         console.log('초기 메시지 로드:', JSON.stringify(messagesResult, null, 2));
         if (messagesResult.success_or_fail) {
-          setMessages(messagesResult.data.map(msg => ({
-            id: msg.id || msg._id,
-            room_id: msg.chat_room_id,
-            sender: msg.sender_id?.toString() === getCurrentUserId() ? '나' : '상대방',
-            text: msg.message,
-            thumbnailImageUrl: msg.thumbnail_image_url,
-            originalImageUrl: msg.original_image_url,
-            type: msg.type || (msg.original_image_url ? 'IMAGE' : 'TEXT'),
-            time: parseDate(msg.created_at).toLocaleString(),
-            unread_count: msg.unread_count || 0,
-          })) || []);
+          setMessages(messagesResult.data
+              .filter(msg => !msg.is_deleted && msg.status !== 'DELETED') // 삭제된 메시지 제외
+              .map(msg => ({
+                id: msg.id || msg._id,
+                room_id: msg.chat_room_id,
+                sender: msg.sender_id?.toString() === getCurrentUserId() ? '나' : '상대방',
+                text: msg.message,
+                thumbnailImageUrl: msg.thumbnail_image_url,
+                originalImageUrl: msg.original_image_url,
+                type: msg.type || (msg.original_image_url ? 'IMAGE' : 'TEXT'),
+                time: parseDate(msg.created_at).toLocaleString(),
+                unread_count: msg.unread_count || 0,
+                status: msg.status,
+                is_deleted: msg.is_deleted || false,
+              })) || []);
         } else {
           throw new Error(messagesResult.message || '채팅 메시지 로드 실패');
         }
@@ -298,6 +312,9 @@ function ChatRoom() {
       }
     }
     setFiles(files.filter((_, i) => i !== index));
+    setMessages((prevMessages) =>
+        prevMessages.filter((msg) => msg.id !== fileToRemove.imageId)
+    );
   };
 
   const handleSendMessage = async () => {
@@ -315,6 +332,7 @@ function ChatRoom() {
 
     try {
       setUploading(true);
+
       if (files.length > 0) {
         const imageIds = files.map(f => f.imageId).filter(id => id != null);
         if (imageIds.length === 0) {
@@ -389,26 +407,21 @@ function ChatRoom() {
                       <ListItemText
                           primary={`${msg.sender} (${msg.time})`}
                           secondary={
-                            msg.type === 'IMAGE' ? (
-                                msg.originalImageUrl ? (
-                                    <div>
-                                      <img
-                                          src={msg.originalImageUrl}
-                                          alt="chat image"
-                                          style={{ maxWidth: '100px', maxHeight: '100px', cursor: 'pointer' }}
-                                          onClick={() => window.open(msg.originalImageUrl, '_blank')}
-                                          onError={(e) => {
-                                            console.error('Image load error:', msg.originalImageUrl);
-                                            e.target.onerror = null;
-                                            e.target.src = '/fallback-image.png';
-                                          }}
-                                      />
-                                    </div>
-                                ) : (
-                                    '이미지 로드 실패'
-                                )
+                            msg.type === 'IMAGE' && msg.originalImageUrl ? (
+                                <div>
+                                  <img
+                                      src={msg.originalImageUrl}
+                                      alt="chat image"
+                                      style={{ maxWidth: '100px', maxHeight: '100px', cursor: 'pointer' }}
+                                      onClick={() => window.open(msg.originalImageUrl, '_blank')}
+                                      onError={(e) => {
+                                        console.error('Image load error:', msg.originalImageUrl);
+                                        e.target.onerror = null; // 무한 루프 방지
+                                      }}
+                                  />
+                                </div>
                             ) : (
-                                msg.text || '빈 메시지'
+                                msg.text
                             )
                           }
                           sx={{
