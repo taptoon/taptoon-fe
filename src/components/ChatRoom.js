@@ -86,14 +86,14 @@ function ChatRoom() {
         const senderId = messageData.sender_id || messageData.senderId;
         const newMessage = {
           id: messageData.id || messageData._id,
-          room_id: messageData.chat_room_id,
+          room_id: messageData.chat_room_id || messageData.chatRoomId,
           sender: senderId?.toString() === getCurrentUserId() ? '나' : '상대방',
           text: messageData.message,
-          thumbnailImageUrl: messageData.thumbnail_image_url,
-          originalImageUrl: messageData.original_image_url,
-          type: messageData.type || (messageData.original_image_url ? 'IMAGE' : 'TEXT'),
-          time: parseDate(messageData.created_at).toLocaleString(),
-          unread_count: messageData.unread_count || 0,
+          thumbnailImageUrl: messageData.thumbnail_image_url || messageData.thumbnailImageUrl,
+          originalImageUrl: messageData.original_image_url || messageData.originalImageUrl,
+          type: messageData.type || (messageData.original_image_url || messageData.originalImageUrl ? 'IMAGE' : 'TEXT'),
+          time: parseDate(messageData.created_at || messageData.createdAt).toLocaleString(),
+          unread_count: messageData.unread_count || messageData.unreadCount || 0,
           status: messageData.status,
           is_deleted: messageData.is_deleted || false,
         };
@@ -104,7 +104,7 @@ function ChatRoom() {
       console.error('WebSocket 메시지 파싱 실패:', err);
       setError('유효하지 않은 채팅 데이터 수신');
     }
-  }, []);
+  }, [roomId, navigate]);
 
   useEffect(() => {
     const setupChatRoom = async () => {
@@ -195,6 +195,10 @@ function ChatRoom() {
           };
           wsRef.current.onclose = (event) => {
             console.log('WebSocket 연결 종료:', event.code, event.reason);
+            if (event.reason === 'Chat room deleted') {
+              setError('이 채팅방이 삭제되었습니다.');
+              setTimeout(() => navigate('/chat-list'), 100);
+            }
           };
         }
       } catch (err) {
@@ -330,6 +334,11 @@ function ChatRoom() {
       return;
     }
 
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      setError('WebSocket 연결이 끊어졌습니다. 새로고침 후 다시 시도해주세요.');
+      return;
+    }
+
     try {
       setUploading(true);
 
@@ -355,22 +364,34 @@ function ChatRoom() {
         const sendResult = await sendResponse.json();
         console.log('Image Send Response:', JSON.stringify(sendResult, null, 2));
         if (!sendResult.success_or_fail) throw new Error(sendResult.message || '이미지 메시지 전송 실패');
+
+        const newImageMessages = sendResult.data.map(msg => ({
+          id: msg.id || msg._id,
+          room_id: msg.chat_room_id,
+          sender: msg.sender_id?.toString() === getCurrentUserId() ? '나' : '상대방',
+          text: msg.message,
+          thumbnailImageUrl: msg.thumbnail_image_url,
+          originalImageUrl: msg.original_image_url,
+          type: msg.type || (msg.original_image_url ? 'IMAGE' : 'TEXT'),
+          time: parseDate(msg.created_at).toLocaleString(),
+          unread_count: msg.unread_count || 0,
+          status: msg.status,
+          is_deleted: msg.is_deleted || false,
+        }));
+        setMessages(prevMessages => [...prevMessages, ...newImageMessages]);
         setFiles([]);
       }
 
       if (message.trim()) {
-        const response = await fetch(`${process.env.REACT_APP_WS_URL}/chats/${roomId}/message`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ message: message }),
-        });
-        if (!response.ok) throw new Error('메시지 전송에 실패했습니다.');
-        const result = await response.json();
-        console.log('Text Send Response:', JSON.stringify(result, null, 2));
-        if (!result.success_or_fail) throw new Error(result.message || '메시지 전송 실패');
+        const senderId = getCurrentUserId();
+        if (!senderId) throw new Error('사용자 ID를 가져올 수 없습니다.');
+
+        const messagePayload = {
+          senderId: Number(senderId),
+          message: message.trim(),
+        };
+        console.log('Sending WebSocket message:', JSON.stringify(messagePayload));
+        wsRef.current.send(JSON.stringify(messagePayload));
         setMessage('');
       }
     } catch (err) {
@@ -393,6 +414,8 @@ function ChatRoom() {
             <List>
               {messages.map((msg) => {
                 console.log('Rendering message:', JSON.stringify(msg, null, 2));
+                // 삭제된 메시지 또는 내용 없는 경우 렌더링 안 함
+                if (msg.is_deleted || (msg.status === 'DELETED') || (!msg.text && !msg.originalImageUrl)) return null;
                 return (
                     <ListItem
                         key={msg.id}
@@ -407,8 +430,8 @@ function ChatRoom() {
                       <ListItemText
                           primary={`${msg.sender} (${msg.time})`}
                           secondary={
-                            msg.type === 'IMAGE' && msg.originalImageUrl ? (
-                                <div>
+                            <>
+                              {msg.type === 'IMAGE' && msg.originalImageUrl ? (
                                   <img
                                       src={msg.originalImageUrl}
                                       alt="chat image"
@@ -416,13 +439,14 @@ function ChatRoom() {
                                       onClick={() => window.open(msg.originalImageUrl, '_blank')}
                                       onError={(e) => {
                                         console.error('Image load error:', msg.originalImageUrl);
-                                        e.target.onerror = null; // 무한 루프 방지
+                                        e.target.onerror = null;
+                                        e.target.src = '/images/fallback-image.png';
                                       }}
                                   />
-                                </div>
-                            ) : (
-                                msg.text
-                            )
+                              ) : msg.text ? (
+                                  msg.text
+                              ) : null}
+                            </>
                           }
                           sx={{
                             color: msg.sender === '나' ? '#1976d2' : '#000',
@@ -446,7 +470,7 @@ function ChatRoom() {
                     <ListItemText
                         primary="나 (미리보기)"
                         secondary={
-                          <div style={{ position: 'relative' }}>
+                          <>
                             <img
                                 src={URL.createObjectURL(file)}
                                 alt="preview"
@@ -461,9 +485,9 @@ function ChatRoom() {
                                 <CloseIcon />
                               </IconButton>
                             </div>
-                          </div>
+                          </>
                         }
-                        sx={{ color: '#1976d2', textAlign: 'right' }}
+                        sx={{ color: '#1976d2', textAlign: 'right', position: 'relative' }}
                     />
                   </ListItem>
               ))}
