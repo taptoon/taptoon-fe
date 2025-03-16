@@ -359,7 +359,7 @@ function ChatRoom() {
       }
 
       if (message.trim()) {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/chats/${roomId}/message`, {
+        const response = await fetch(`${process.env.REACT_APP_WS_URL}/chats/${roomId}/message`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
